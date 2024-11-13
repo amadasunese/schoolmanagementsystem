@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Classes</h2>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Class Name</th>
+            <th>Schedule</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for class in classes %}
+        <tr>
+            <td>{{ class.id }}</td>
+            <td>{{ class.name }}</td>
+            <td>{{ class.schedule }}</td>
+            <td>
+                <a href="{{ url_for('main.edit_class', class_id=class.id) }}">Edit</a> |
+                <a href="{{ url_for('main.delete_class', class_id=class.id) }}">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('main.add_class') }}" class="cta-button">Add New Class</a>
+{% endblock %}

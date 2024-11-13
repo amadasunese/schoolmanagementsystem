@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+<p>Total Students: {{ student_count }}</p>
+<p>Total Teachers: {{ teacher_count }}</p>
+<p>Total Classes: {{ class_count }}</p>
+<a href="{{ url_for('main.students') }}">Manage Students</a>
+<a href="{{ url_for('main.generate_report', report_type='excel') }}">Export to Excel</a>
+<a href="{{ url_for('main.generate_report', report_type='word') }}">Export to Word</a>
+{% endblock %}

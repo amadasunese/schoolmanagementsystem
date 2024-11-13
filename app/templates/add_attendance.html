@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Add Attendance{% endblock %}
+
+{% block content %}
+<h2>Add Attendance</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div>
+        {{ form.student_id.label }} {{ form.student_id() }}
+    </div>
+    <div>
+        {{ form.class_id.label }} {{ form.class_id() }}
+    </div>
+    <div>
+        {{ form.attendance_date.label }} {{ form.attendance_date() }}
+    </div>
+    <div>
+        {{ form.status.label }} {{ form.status() }}
+    </div>
+    <button type="submit">Add Attendance</button>
+</form>
+{% endblock %}
