@@ -2,12 +2,17 @@
 
 {% block content %}
 <h2>Classes</h2>
+
+<!-- Classes Table -->
 <table>
     <thead>
         <tr>
             <th>ID</th>
             <th>Class Name</th>
             <th>Schedule</th>
+            <th>Teacher ID</th>
+            <th>Start Date</th>
+            <th>End Date</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -15,8 +20,11 @@
         {% for class in classes %}
         <tr>
             <td>{{ class.id }}</td>
-            <td>{{ class.name }}</td>
+            <td>{{ class.class_name }}</td>
             <td>{{ class.schedule }}</td>
+            <td>{{ class.teacher_id }}</td>
+            <td>{{ class.start_date }}</td>
+            <td>{{ class.end_date }}</td>
             <td>
                 <a href="{{ url_for('main.edit_class', class_id=class.id) }}">Edit</a> |
                 <a href="{{ url_for('main.delete_class', class_id=class.id) }}">Delete</a>
@@ -26,4 +34,6 @@
     </tbody>
 </table>
 <a href="{{ url_for('main.add_class') }}" class="cta-button">Add New Class</a>
+
+
 {% endblock %}

@@ -1,7 +1,7 @@
-# app/forms.py
 from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField, SelectField, DateField, SubmitField
 from wtforms.validators import DataRequired, Length, NumberRange
+
 
 class StudentForm(FlaskForm):
     first_name = StringField('First Name', validators=[DataRequired(), Length(max=50)])
@@ -21,11 +21,15 @@ class TeacherForm(FlaskForm):
     subject = StringField('Subject', validators=[DataRequired(), Length(max=50)])
     email = StringField('Email', validators=[DataRequired(), Length(max=100)])
     phone = StringField('Phone', validators=[DataRequired(), Length(max=15)])
+    hire_date = DateField('Hire Date', validators=[DataRequired()])
     submit = SubmitField('Save')
 
 class ClassForm(FlaskForm):
-    name = StringField('Class Name', validators=[DataRequired(), Length(max=50)])
-    schedule = StringField('Schedule', validators=[DataRequired(), Length(max=100)])  # E.g., Mon-Wed-Fri, 9-11 AM
+    class_name = StringField('Class Name', validators=[DataRequired(), Length(max=100)])  # Matches VARCHAR(100)
+    teacher_id = IntegerField('Teacher ID', validators=[DataRequired(), NumberRange(min=1)])  # Matches INTEGER
+    schedule = StringField('Schedule', validators=[DataRequired(), Length(max=50)])  # Matches VARCHAR(50)
+    start_date = DateField('Start Date', format='%Y-%m-%d', validators=[DataRequired()])  # Matches DATE
+    end_date = DateField('End Date', format='%Y-%m-%d', validators=[DataRequired()])  # Matches DATE
     submit = SubmitField('Save')
 
 class GradeForm(FlaskForm):
@@ -37,6 +41,6 @@ class GradeForm(FlaskForm):
 class AttendanceForm(FlaskForm):
     student_id = IntegerField('Student ID', validators=[DataRequired(), NumberRange(min=1)])
     class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
-    date = DateField('Date', validators=[DataRequired()])
+    attendance_date = DateField('Attendance Date', validators=[DataRequired()])
     status = SelectField('Status', choices=[('Present', 'Present'), ('Absent', 'Absent')], validators=[DataRequired()])
     submit = SubmitField('Save')

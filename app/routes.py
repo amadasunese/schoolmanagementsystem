@@ -89,27 +89,31 @@ def generate_report(report_type):
         output.seek(0)
         return send_file(output, attachment_filename="report.docx", as_attachment=True)
 
-
+# Student route
 @main.route('/students')
 def students():
     students = Student.query.all()
     return render_template('students.html', students=students)
 
+# Teacher route
 @main.route('/teachers')
 def teachers():
     teachers = Teacher.query.all()
     return render_template('teachers.html', teachers=teachers)
 
+# Classes routes
 @main.route('/classes')
 def classes():
     classes = Class.query.all()
     return render_template('classes.html', classes=classes)
 
+# Grades routes
 @main.route('/grades')
 def grades():
     grades = Grade.query.all()
     return render_template('grades.html', grades=grades)
 
+# Attendance routes
 @main.route('/attendance')
 def attendance():
     attendance = Attendance.query.all()
@@ -148,20 +152,96 @@ def add_teacher():
         return redirect(url_for('main.teachers'))
     return render_template('add_teacher.html', form=form)
 
+
 @main.route('/add_class', methods=['GET', 'POST'])
 @login_required
 def add_class():
     form = ClassForm()
     if form.validate_on_submit():
+        # Create a new class instance with form data
         new_class = Class(
-            name=form.name.data,
-            year=form.year.data
+            class_name=form.class_name.data,
+            teacher_id=form.teacher_id.data,
+            schedule=form.schedule.data,
+            start_date=form.start_date.data,
+            end_date=form.end_date.data
         )
         db.session.add(new_class)
         db.session.commit()
-        flash('Class added successfully!')
+        flash('Class added successfully!', 'success')
         return redirect(url_for('main.classes'))
     return render_template('add_class.html', form=form)
+
+
+@main.route('/add_or_edit_class', methods=['GET', 'POST'])
+@login_required
+def add_or_edit_class():
+    form = ClassForm()
+    """Handle both adding and editing classes."""
+    class_id = request.args.get('class_id', None)
+    if class_id:
+        # If class_id is provided, retrieve the class for editing
+        class_instance = Class.query.get_or_404(class_id)
+        form = ClassForm(obj=class_instance)
+        if form.validate_on_submit():
+            # Update class details
+            class_instance.class_name = form.class_name.data
+            class_instance.teacher_id = form.teacher_id.data
+            class_instance.schedule = form.schedule.data
+            class_instance.start_date = form.start_date.data
+            class_instance.end_date = form.end_date.data
+            db.session.commit()
+            flash('Class updated successfully!', 'success')
+            return redirect(url_for('main.classes'))
+    else:
+        # If no class_id is provided, create a blank form for adding
+        form = ClassForm()
+        if form.validate_on_submit():
+            # Add a new class
+            new_class = Class(
+                class_name=form.class_name.data,
+                teacher_id=form.teacher_id.data,
+                schedule=form.schedule.data,
+                start_date=form.start_date.data,
+                end_date=form.end_date.data
+            )
+            db.session.add(new_class)
+            db.session.commit()
+            flash('Class added successfully!', 'success')
+            return redirect(url_for('main.classes'))
+
+    return render_template('add_or_edit_class.html', form=form, class_id=class_id)
+
+
+@main.route('/edit_class/<int:class_id>', methods=['GET', 'POST'])
+@login_required
+def edit_class(class_id):
+    """Handle editing an existing class."""
+    class_instance = Class.query.get_or_404(class_id)
+    form = ClassForm(obj=class_instance)
+    if form.validate_on_submit():
+        # Update class details
+        class_instance.class_name = form.class_name.data
+        class_instance.teacher_id = form.teacher_id.data
+        class_instance.schedule = form.schedule.data
+        class_instance.start_date = form.start_date.data
+        class_instance.end_date = form.end_date.data
+        db.session.commit()
+        flash('Class updated successfully!', 'success')
+        return redirect(url_for('main.classes'))
+    return render_template('edit_class.html', form=form, class_instance=class_instance)
+
+
+@main.route('/delete_class/<int:class_id>', methods=['POST'])
+@login_required
+def delete_class(class_id):
+    """Handle deleting a class."""
+    class_instance = Class.query.get_or_404(class_id)
+    db.session.delete(class_instance)
+    db.session.commit()
+    flash('Class deleted successfully!', 'success')
+    return redirect(url_for('main.classes'))
+
 
 @main.route('/add_grade', methods=['GET', 'POST'])
 @login_required

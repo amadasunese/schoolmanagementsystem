@@ -1,3 +1,10 @@
+"""
+This is used to create admin users
+
+This script should be run in a shell with the necessary environment variables set
+
+Usage: python admin_user.py
+"""
 from app import create_app, db
 from app.models import User
 
@@ -13,7 +20,7 @@ def create_admin():
 
         # Create the admin user
         admin = User(username='admin')
-        admin.set_password('1234567')  # Change 'admin_password' to a secure password
+        admin.set_password('1234567') # You can change this to a more secure password
         admin.is_admin = True
         
         # Add to the session and commit
