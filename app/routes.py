@@ -142,9 +142,13 @@ def add_teacher():
     form = TeacherForm()
     if form.validate_on_submit():
         teacher = Teacher(
-            name=form.name.data,
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
             subject=form.subject.data,
-            email=form.email.data
+            email=form.email.data,
+            phone=form.phone.data,
+            hire_date=form.hire_date.data
+
         )
         db.session.add(teacher)
         db.session.commit()
