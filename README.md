@@ -13,3 +13,5 @@ Key Features:
 9. Easy report generation: Exportable reports (Microsoft Excel and Word) are generated for administrators, allowing them to analyze and share data with stakeholders.
 10. Customizable dashboards: Administrators can create customizable dashboards to visualize key performance indicators (KPIs) and track progress over time. (note: This feature is yet to be implemented.)
 
+Use the link below to check the application in action:
+https://schoolmgtportal.pythonanywhere.com/
