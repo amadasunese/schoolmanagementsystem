@@ -2,11 +2,27 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file
 from . import db
 from .forms import TeacherForm, ClassForm, GradeForm, AttendanceForm, StudentForm
-from .models import User, Student, Teacher, Class, Grade, Attendance
+from .models import Grade
 from flask_login import login_user, logout_user, login_required, current_user
 from io import BytesIO
 import pandas as pd
 from docx import Document
+
+
+# Import additional models
+from .models import (
+    User, Student, Teacher, Class, Attendance, Assessment, AssessmentType, AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject
+)
+from .forms import AssessmentForm, AssessmentResultForm, SubjectForm  # New forms for assessments and subjects
+
+import os
+from werkzeug.utils import secure_filename
+from flask import current_app
+
+from .forms import SchoolForm
+from .models import School
+
+
 
 
 # Create a Blueprint instance
@@ -16,6 +32,48 @@ main = Blueprint('main', __name__)
 @main.route('/')
 def index():
     return render_template('index.html')
+
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request
+from . import db
+from .forms import SchoolForm, UserForm
+from .models import School, User
+
+
+
+@main.route('/register_school', methods=['GET', 'POST'])
+def register_school():
+    form = SchoolForm()
+    if form.validate_on_submit():
+        school = School(
+            name=form.name.data,
+            address=form.address.data,
+            email=form.email.data,
+            phone_number=form.phone_number.data,
+            website=form.website.data
+        )
+        db.session.add(school)
+        db.session.commit()
+        flash('School registered successfully!', 'success')
+        return redirect(url_for('main.register_user'))  # Redirect to user registration after school
+    return render_template('register_school.html', form=form)
+
+@main.route('/register_user', methods=['GET', 'POST'])
+def register_user():
+    form = UserForm()
+    form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    if form.validate_on_submit():
+        user = User(
+            username=form.username.data,
+            is_admin=form.is_admin.data,
+            school_id=form.school_id.data
+        )
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash('User registered successfully!', 'success')
+        return redirect(url_for('main.index'))  # Redirect to home or login
+    return render_template('register_user.html', form=form)
 
 
 @main.route('/login', methods=['GET', 'POST'])
@@ -136,25 +194,324 @@ def add_student():
         return redirect(url_for('main.students'))
     return render_template('add_student.html', form=form)
 
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+    
+#     # Populate the list of schools
+#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    
+#     # Populate the list of subjects from the Subject table
+#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
+#     if form.validate_on_submit():
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             email=form.email.data,
+#             subject=form.subject.data,  # Save subject ID instead of name
+#             hire_date=form.hire_date.data,
+#             phone_number=form.phone_number.data,
+#             school_id=form.school_id.data
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+#         flash('Teacher added successfully!')
+#         return redirect(url_for('main.teachers'))
+    
+#     return render_template('add_teacher.html', form=form)
+
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+    
+#     # Populate the school choices
+#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    
+#     # Populate the subject choices
+#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
+#     if form.validate_on_submit():
+#         # Save the teacher with multiple subjects
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             email=form.email.data,
+#             hire_date=form.hire_date.data,
+#             phone_number=form.phone_number.data,
+#             school_id=form.school_id.data
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+        
+#         # Associate the teacher with selected subjects
+#         for subject_id in form.subject.data:
+#             teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
+#             db.session.add(teacher_subject)
+        
+#         db.session.commit()
+#         flash('Teacher added successfully with selected subjects!')
+#         return redirect(url_for('main.teachers'))
+    
+#     return render_template('add_teacher.html', form=form)
+
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+    
+#     # Populate the school choices
+#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    
+#     # Populate the subject choices
+#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
+#     if form.validate_on_submit():
+#         # Save the teacher's data
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             email=form.email.data,
+#             subject=form.subject.data,
+#             hire_date=form.hire_date.data,
+#             phone_number=form.phone_number.data,
+#             school_id=form.school_id.data
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+        
+#         # Associate the teacher with selected subjects
+#         for subject_id in form.subject.data:
+#             teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
+#             db.session.add(teacher_subject)
+        
+#         db.session.commit()
+#         flash('Teacher added successfully with selected subjects!')
+#         return redirect(url_for('main.teachers'))
+    
+#     return render_template('add_teacher.html', form=form)
+
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+    
+#     # Populate the school choices
+#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    
+#     # Populate the subject choices
+#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
+#     if form.validate_on_submit():
+#         # Save the teacher's data
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             email=form.email.data,
+#             hire_date=form.hire_date.data,
+#             phone_number=form.phone_number.data,
+#             school_id=form.school_id.data
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+        
+#         # Associate the teacher with selected subjects
+#         for subject_id in form.subject.data:
+#             teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
+#             db.session.add(teacher_subject)
+        
+#         db.session.commit()
+#         flash('Teacher added successfully with selected subjects!')
+#         return redirect(url_for('main.teachers'))
+    
+#     return render_template('add_teacher.html', form=form)
+
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+    
+#     # Populate the school choices
+#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    
+#     # Populate the subject choices
+#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
+#     if form.validate_on_submit():
+#         # Save the teacher's data
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             email=form.email.data,
+#             hire_date=form.hire_date.data,
+#             phone_number=form.phone_number.data,
+#             school_id=form.school_id.data
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+        
+#         # Associate the teacher with selected subjects
+#         for subject_id in form.subject.data:
+#             teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
+#             db.session.add(teacher_subject)
+        
+#         db.session.commit()
+#         flash('Teacher added successfully with selected subjects!')
+#         return redirect(url_for('main.teachers'))
+    
+#     return render_template('add_teacher.html', form=form)
+
+
+
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+    
+#     # Populate the school choices
+#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    
+#     # Populate the subject choices
+#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
+#     if form.validate_on_submit():
+#         # Handle file upload
+#         photo_filename = None
+#         if form.photo.data:
+#             photo_file = form.photo.data
+#             photo_filename = secure_filename(photo_file.filename)
+#             photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], photo_filename)
+#             photo_file.save(photo_path)
+        
+#         # Save the teacher's data
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             email=form.email.data,
+#             hire_date=form.hire_date.data,
+#             phone_number=form.phone_number.data,
+#             qualification=form.qualification.data,
+#             address=form.address.data,
+#             date_of_birth=form.date_of_birth.data,
+#             gender=form.gender.data,
+#             photo=photo_filename,
+#             school_id=form.school_id.data
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+        
+#         # Associate the teacher with selected subjects
+#         for subject_id in form.subject.data:
+#             teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
+#             db.session.add(teacher_subject)
+        
+#         db.session.commit()
+#         flash('Teacher added successfully with photo and details!')
+#         return redirect(url_for('main.teachers'))
+    
+#     return render_template('add_teacher.html', form=form)
+
+
 @main.route('/add_teacher', methods=['GET', 'POST'])
 @login_required
 def add_teacher():
     form = TeacherForm()
+    
+    # Populate choices
+    form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
+    form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
+    
     if form.validate_on_submit():
+        # Handle photo upload
+        photo_filename = None
+        if form.photo.data:
+            photo_file = form.photo.data
+            photo_filename = secure_filename(photo_file.filename)
+            photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], photo_filename)
+            os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)  # Ensure directory exists
+            photo_file.save(photo_path)
+        
+        # Save the teacher's data
         teacher = Teacher(
             first_name=form.first_name.data,
             last_name=form.last_name.data,
-            subject=form.subject.data,
             email=form.email.data,
-            phone=form.phone.data,
-            hire_date=form.hire_date.data
-
+            hire_date=form.hire_date.data,
+            phone_number=form.phone_number.data,
+            qualification=form.qualification.data,
+            address=form.address.data,
+            date_of_birth=form.date_of_birth.data,
+            gender=form.gender.data,
+            photo=photo_filename,
+            school_id=form.school_id.data
         )
         db.session.add(teacher)
         db.session.commit()
-        flash('Teacher added successfully!')
+        
+        # Associate teacher with subjects
+        for subject_id in form.subject.data:
+            teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
+            db.session.add(teacher_subject)
+        
+        db.session.commit()
+        flash('Teacher added successfully with photo and details!')
         return redirect(url_for('main.teachers'))
+    
     return render_template('add_teacher.html', form=form)
+
+
+# @main.route('/add_teacher', methods=['GET', 'POST'])
+# @login_required
+# def add_teacher():
+#     form = TeacherForm()
+#     if form.validate_on_submit():
+#         teacher = Teacher(
+#             first_name=form.first_name.data,
+#             last_name=form.last_name.data,
+#             subject=form.subject.data,
+#             email=form.email.data,
+#             phone_number=form.phone_number.data,
+#             hire_date=form.hire_date.data
+
+#         )
+#         db.session.add(teacher)
+#         db.session.commit()
+#         flash('Teacher added successfully!')
+#         return redirect(url_for('main.teachers'))
+#     return render_template('add_teacher.html', form=form)
+
+
+# Edit Teacher
+# @main.route('/edit_teacher/<int:teacher_id>', methods=['GET', 'POST'])
+# def edit_teacher(teacher_id):
+#     teacher = Teacher.query.get_or_404(teacher_id)
+    
+#     if request.method == 'POST':
+#         # You would typically update the teacher's information based on form input
+#         teacher.name = request.form['name']
+#         teacher.subject = request.form['subject']
+#         db.session.commit()
+#         flash('Teacher updated successfully!', 'success')
+#         return redirect(url_for('index'))
+    
+#     return render_template('edit_teacher.html', teacher=teacher)
+
+# # Delete Teacher
+# @main.route('/delete_teacher/<int:teacher_id>', methods=['POST'])
+# def delete_teacher(teacher_id):
+#     teacher = Teacher.query.get_or_404(teacher_id)
+#     db.session.delete(teacher)
+#     db.session.commit()
+#     flash('Teacher deleted successfully!', 'danger')
+#     return redirect(url_for('index'))
 
 
 @main.route('/add_class', methods=['GET', 'POST'])
@@ -263,6 +620,133 @@ def add_grade():
         return redirect(url_for('main.grades'))
     return render_template('add_grade.html', form=form)
 
+# @main.route('/add_attendance', methods=['GET', 'POST'])
+# @login_required
+# def add_attendance():
+#     form = AttendanceForm()
+#     if form.validate_on_submit():
+#         attendance = Attendance(
+#             student_id=form.student_id.data,
+#             class_id=form.class_id.data,
+#             date=form.date.data,
+#             status=form.status.data
+#         )
+#         db.session.add(attendance)
+#         db.session.commit()
+#         flash('Attendance record added successfully!')
+#         return redirect(url_for('main.attendance'))
+#     return render_template('add_attendance.html', form=form)
+
+
+
+
+
+############################################################################################################
+
+
+# @main.route('/register_school', methods=['GET', 'POST'])
+# @login_required
+# def register_school():
+#     # Only admins or superusers should be allowed to register schools
+#     if not current_user.is_admin:
+#         flash('You do not have permission to register a school.', 'danger')
+#         return redirect(url_for('main.index'))
+
+#     form = SchoolForm()
+#     if form.validate_on_submit():
+#         # Create a new school instance
+#         new_school = School(
+#             name=form.name.data,
+#             address=form.address.data,
+#             email=form.email.data,
+#             phone_number=form.phone_number.data,
+#             website=form.website.data
+#         )
+#         db.session.add(new_school)
+#         db.session.commit()
+#         flash('School registered successfully!', 'success')
+#         return redirect(url_for('main.dashboard'))  # Redirect to dashboard or relevant page
+#     return render_template('register_school.html', form=form)
+
+
+# Route to display all subjects
+@main.route('/subjects')
+@login_required
+def subjects():
+    subjects = Subject.query.filter_by(school_id=current_user.school_id).all()
+    return render_template('subjects.html', subjects=subjects)
+
+# Route to add a subject
+@main.route('/add_subject', methods=['GET', 'POST'])
+@login_required
+def add_subject():
+    form = SubjectForm()
+    if form.validate_on_submit():
+        subject = Subject(
+            name=form.name.data,
+            school_id=current_user.school_id
+        )
+        db.session.add(subject)
+        db.session.commit()
+        flash('Subject added successfully!')
+        return redirect(url_for('main.subjects'))
+    return render_template('add_subject.html', form=form)
+
+# Route to display all assessments
+@main.route('/assessments')
+@login_required
+def assessments():
+    assessments = Assessment.query.filter_by(class_id=current_user.school_id).all()
+    return render_template('assessments.html', assessments=assessments)
+
+# Route to add an assessment
+@main.route('/add_assessment', methods=['GET', 'POST'])
+@login_required
+def add_assessment():
+    form = AssessmentForm()
+    if form.validate_on_submit():
+        assessment = Assessment(
+            name=form.name.data,
+            date=form.date.data,
+            assessment_type_id=form.assessment_type_id.data,
+            class_id=form.class_id.data
+        )
+        db.session.add(assessment)
+        db.session.commit()
+        flash('Assessment added successfully!')
+        return redirect(url_for('main.assessments'))
+    return render_template('add_assessment.html', form=form)
+
+# Route to record assessment scores per subject
+@main.route('/add_assessment_score/<int:assessment_id>', methods=['GET', 'POST'])
+@login_required
+def add_assessment_score(assessment_id):
+    assessment = Assessment.query.get_or_404(assessment_id)
+    if assessment.class_id not in [cls.id for cls in current_user.school.classes]:
+        flash('You do not have permission to edit this assessment.')
+        return redirect(url_for('main.assessments'))
+    form = AssessmentResultForm()
+    if form.validate_on_submit():
+        result = AssessmentResult(
+            student_id=form.student_id.data,
+            assessment_id=assessment_id,
+            subject_id=form.subject_id.data,
+            marks_obtained=form.marks_obtained.data
+        )
+        db.session.add(result)
+        db.session.commit()
+        flash('Score added successfully!')
+        return redirect(url_for('main.assessments'))
+    return render_template('add_assessment_score.html', form=form, assessment=assessment)
+
+# Route to view all scores for an assessment
+@main.route('/assessment_scores/<int:assessment_id>')
+@login_required
+def assessment_scores(assessment_id):
+    scores = AssessmentResult.query.filter_by(assessment_id=assessment_id).all()
+    return render_template('assessment_scores.html', scores=scores)
+
+# Route to add attendance
 @main.route('/add_attendance', methods=['GET', 'POST'])
 @login_required
 def add_attendance():
@@ -279,4 +763,120 @@ def add_attendance():
         flash('Attendance record added successfully!')
         return redirect(url_for('main.attendance'))
     return render_template('add_attendance.html', form=form)
+
+# Route to generate a report of all assessment scores
+@main.route('/generate_assessment_report/<int:assessment_id>')
+@login_required
+def generate_assessment_report(assessment_id):
+    assessment = Assessment.query.get_or_404(assessment_id)
+    scores = AssessmentResult.query.filter_by(assessment_id=assessment_id).all()
+    data = pd.DataFrame([{
+        "Student": f"{score.student.first_name} {score.student.last_name}",
+        "Subject": score.subject.name,
+        "Marks Obtained": score.marks_obtained
+    } for score in scores])
+    
+    with BytesIO() as output:
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        data.to_excel(writer, index=False, sheet_name='Assessment Scores')
+        writer.save()
+        output.seek(0)
+        return send_file(output, attachment_filename=f"Assessment_{assessment.name}_Report.xlsx", as_attachment=True)
+
+
+# Route to list all assessment types
+@main.route('/assessment_types')
+@login_required
+def assessment_types():
+    if not current_user.is_admin:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('main.index'))
+    assessment_types = AssessmentType.query.all()
+    return render_template('assessment_types.html', assessment_types=assessment_types)
+
+# Route to add an assessment type
+@main.route('/add_assessment_type', methods=['GET', 'POST'])
+@login_required
+def add_assessment_type():
+    if not current_user.is_admin:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('main.index'))
+    if request.method == 'POST':
+        name = request.form.get('name')
+        if not name:
+            flash('Assessment type name is required.', 'danger')
+        else:
+            new_type = AssessmentType(name=name)
+            db.session.add(new_type)
+            db.session.commit()
+            flash('Assessment type added successfully!', 'success')
+            return redirect(url_for('main.assessment_types'))
+    return render_template('add_assessment_type.html')
+
+
+# Route to view subject scores for an assessment
+@main.route('/assessment_subject_scores/<int:assessment_id>')
+@login_required
+def assessment_subject_scores(assessment_id):
+    scores = AssessmentSubjectScore.query.filter_by(assessment_id=assessment_id).all()
+    return render_template('assessment_subject_scores.html', scores=scores, assessment_id=assessment_id)
+
+# Route to add a subject score for an assessment
+@main.route('/add_assessment_subject_score/<int:assessment_id>', methods=['GET', 'POST'])
+@login_required
+def add_assessment_subject_score(assessment_id):
+    if not current_user.is_admin:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('main.index'))
+    assessment = Assessment.query.get_or_404(assessment_id)
+    if request.method == 'POST':
+        subject_id = request.form.get('subject_id')
+        total_marks = request.form.get('total_marks')
+        if not subject_id or not total_marks:
+            flash('All fields are required.', 'danger')
+        else:
+            new_score = AssessmentSubjectScore(
+                assessment_id=assessment_id,
+                subject_id=subject_id,
+                total_marks=total_marks
+            )
+            db.session.add(new_score)
+            db.session.commit()
+            flash('Subject score added successfully!', 'success')
+            return redirect(url_for('main.assessment_subject_scores', assessment_id=assessment_id))
+    subjects = Subject.query.filter_by(school_id=current_user.school_id).all()
+    return render_template('add_assessment_subject_score.html', assessment=assessment, subjects=subjects)
+
+
+# Route to view all subjects for a class
+@main.route('/class_subjects/<int:class_id>')
+@login_required
+def class_subjects(class_id):
+    class_instance = Class.query.get_or_404(class_id)
+    subjects = ClassSubject.query.filter_by(class_id=class_id).all()
+    return render_template('class_subjects.html', class_instance=class_instance, subjects=subjects)
+
+# Route to add a subject to a class
+@main.route('/add_class_subject/<int:class_id>', methods=['GET', 'POST'])
+@login_required
+def add_class_subject(class_id):
+    if not current_user.is_admin:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('main.index'))
+    class_instance = Class.query.get_or_404(class_id)
+    if request.method == 'POST':
+        subject_id = request.form.get('subject_id')
+        if not subject_id:
+            flash('Subject is required.', 'danger')
+        else:
+            new_class_subject = ClassSubject(
+                class_id=class_id,
+                subject_id=subject_id
+            )
+            db.session.add(new_class_subject)
+            db.session.commit()
+            flash('Subject added to class successfully!', 'success')
+            return redirect(url_for('main.class_subjects', class_id=class_id))
+    subjects = Subject.query.filter_by(school_id=current_user.school_id).all()
+    return render_template('add_class_subject.html', class_instance=class_instance, subjects=subjects)
 
