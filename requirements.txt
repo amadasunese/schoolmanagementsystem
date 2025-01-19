@@ -83,3 +83,4 @@ wcwidth==0.2.13
 Werkzeug==3.0.4
 wrapt==1.16.0
 WTForms==3.2.1
+gunicorn==19.7.1
