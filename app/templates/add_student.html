@@ -1,32 +1,84 @@
 {% extends "base.html" %}
 
-{% block title %}Add Student{% endblock %}
-
 {% block content %}
-<h2>Add Student</h2>
-<form method="POST">
-    {{ form.hidden_tag() }}
-    <div>
-        {{ form.first_name.label }} {{ form.first_name(size=32) }}
+<div class="container h-100 d-flex justify-content-center align-items-center">
+    <div class="card shadow-sm p-4" style="width: 100%; max-width: 500px;">
+        <h1 class="text-center mb-4">Add Student</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="mb-3">
+                {{ form.first_name.label(class="form-label") }}
+                {{ form.first_name(class="form-control") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.last_name.label(class="form-label") }}
+                {{ form.last_name(class="form-control") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.date_of_birth.label(class="form-label") }}
+                {{ form.date_of_birth(class="form-control") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.enrollment_date.label(class="form-label") }}
+                {{ form.enrollment_date(class="form-control") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.gender.label(class="form-label") }}
+                {{ form.gender(class="form-control") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.grade_level.label(class="form-label") }}
+                {{ form.grade_level(class="form-control") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.contact_email.label(class="form-label") }}
+                {{ form.contact_email(class="form-control") }}
+            </div>
+
+            {% if form.class_id.choices[0][0] == -1 %}
+            <div class="alert alert-warning" role="alert">
+                No classes are available. Please add a class first.
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                {{ form.class_id.label(class="form-label") }}
+                {{ form.class_id(class="form-control") }}
+            </div>
+
+            <div>
+                {{ form.school_id.label }} {{ form.school_id(class="form-control") }}
+            </div>
+
+            <div class="d-grid">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('main.students') }}" class="btn btn-secondary">Back to Students</a>
+        </div>
     </div>
-    <div>
-        {{ form.last_name.label }} {{ form.last_name(size=32) }}
-    </div>
-    <div>
-        {{ form.date_of_birth.label }} {{ form.date_of_birth() }}
-    </div>
-    <div>
-        {{ form.enrollment_date.label }} {{ form.enrollment_date() }}
-    </div>
-    <div>
-        {{ form.gender.label }} {{ form.gender() }}
-    </div>
-    <div>
-        {{ form.grade_level.label }} {{ form.grade_level(size=32) }}
-    </div>
-    <div>
-        {{ form.contact_email.label }} {{ form.contact_email(size=32) }}
-    </div>
-    <button type="submit">Add Student</button>
-</form>
+</div>
 {% endblock %}

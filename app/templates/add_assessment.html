@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Add Assessment</h1>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        {{ form.name.label }}
+        {{ form.name(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.date.label }}
+        {{ form.date(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.assessment_type.label }}
+        {{ form.assessment_type(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.class_id.label }}
+        {{ form.class_id(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.academic_session.label }}
+        {{ form.academic_session(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.term.label }}
+        {{ form.term(class="form-control") }}
+    </div>
+    <button type="submit" class="btn btn-success">Add Assessment</button>
+</form>
+{% endblock %}

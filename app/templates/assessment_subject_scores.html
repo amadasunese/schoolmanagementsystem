@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">Assessment Subject Scores</h1>
+    <div class="back-link">
+        <a href="{{ url_for('main.add_assessment_score') }}">Add New Assessment Subject Score</a>
+    </div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Assessment</th>
+                <th>Academic Session</th>
+                <th>Subject</th>
+                <th>Student</th>
+                <th>Total Marks</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for score in scores %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ score.assessment_name }}</td>
+                <td>{{ score.academic_session }}</td>
+                <td>{{ score.subject_name }}</td>
+                <td>{{ score.first_name }} {{ score.last_name }}</td>
+                <td>{{ score.total_marks }}</td>
+                <td>
+                    <a href="{{ url_for('main.edit_assessment_subject_score', id=score.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{{ url_for('main.delete_assessment_subject_score', id=score.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

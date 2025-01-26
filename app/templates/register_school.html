@@ -1,12 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register School</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
     <h1>Register School</h1>
     <form method="POST">
         {{ form.hidden_tag() }}
@@ -17,5 +10,4 @@
         <p>{{ form.website.label }} {{ form.website(class="form-control") }}</p>
         <p>{{ form.submit(class="btn btn-primary") }}</p>
     </form>
-</body>
-</html>
+{% endblock %}

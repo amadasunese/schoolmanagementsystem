@@ -5,6 +5,7 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Registered Subjects</h2>
+<a href="{{ url_for('main.add_subject') }}" class="btn btn-primary mt-4">Add New Subject</a>
 
     {% if subjects %}
         <table class="table table-bordered mt-4">

@@ -6,6 +6,7 @@ from config import Config
 from flask_login import LoginManager
 from flask import g
 from flask_login import current_user
+import os
 
 
 
@@ -17,6 +18,8 @@ login_manager = LoginManager()
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'static/uploads')
+
 
     
 

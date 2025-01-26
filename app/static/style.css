@@ -5,7 +5,11 @@ html, body {
     font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
+    
 }
+
+
+
 
 /* Main container */
 .container {
@@ -208,4 +212,17 @@ form button:hover {
 h2 {
     color: #333;
     margin-bottom: 20px;
+}
+
+.navbar {
+    margin-bottom: 20px;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.nav-item .active {
+    font-weight: bold;
+    color: #0056b3 !important;
 }

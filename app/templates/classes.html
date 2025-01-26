@@ -4,36 +4,47 @@
 <h2>Classes</h2>
 
 <!-- Classes Table -->
-<table>
+{% if classes %}
+<table class="table table-striped">
     <thead>
         <tr>
             <th>ID</th>
             <th>Class Name</th>
-            <th>Schedule</th>
-            <th>Teacher ID</th>
-            <th>Start Date</th>
-            <th>End Date</th>
+            <th>Class Category</th>
+            <th>Number of Students</th>
+            <th>Teachers</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        {% for class in classes %}
+        {% for class, student_count in classes %}
         <tr>
             <td>{{ class.id }}</td>
             <td>{{ class.class_name }}</td>
-            <td>{{ class.schedule }}</td>
-            <td>{{ class.teacher_id }}</td>
-            <td>{{ class.start_date }}</td>
-            <td>{{ class.end_date }}</td>
+            <td>{{ class.class_category }}</td>
+            <td>{{ student_count }}</td>  <!-- Student count -->
+            <td>
+                {% if class.teachers %}
+                {% for teacher in class.teachers %}
+                    {{ teacher.first_name }} {{ teacher.last_name }}
+                    {% if not loop.last %}, {% endif %}
+                {% endfor %}
+                {% else %}
+                Not Assigned
+                {% endif %}
+            </td>
             <td>
                 <a href="{{ url_for('main.edit_class', class_id=class.id) }}">Edit</a> |
-                <a href="{{ url_for('main.delete_class', class_id=class.id) }}">Delete</a>
+                <a href="{{ url_for('main.delete_class', class_id=class.id) }}" onclick="return confirm('Are you sure you want to delete this class?')">Delete</a>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
-<a href="{{ url_for('main.add_class') }}" class="cta-button">Add New Class</a>
+{% else %}
+<p>No classes available. <a href="{{ url_for('main.add_class') }}">Add a new class</a>.</p>
+{% endif %}
 
+<a href="{{ url_for('main.add_class') }}" class="btn btn-primary mt-3">Add New Class</a>
 
 {% endblock %}

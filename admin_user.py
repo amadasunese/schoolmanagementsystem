@@ -141,7 +141,7 @@ def create_admin():
         # Create the admin user
         admin = User(
             username='admin',
-            is_admin=True,
+            role='admin',
             school_id=school.id
         )
         admin.set_password('1234567')  # You can change this to a more secure password
