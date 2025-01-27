@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}View Fees - School Fees Management{% endblock %}
+
+{% block content %}
+    <h1>View Fees</h1>
+    <form method="GET" action="{{ url_for('main.view_fees') }}">
+        <div class="form-group">
+            <label for="student_id">Student ID</label>
+            <input type="number" class="form-control" id="student_id" name="student_id" required>
+        </div>
+        <button type="submit" class="btn btn-primary">View Fees</button>
+    </form>
+
+    {% if fees %}
+        <h2>Fees for Student ID: {{ student_id }}</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Fee Component</th>
+                    <th>Amount</th>
+                    <th>Academic Year</th>
+                    <th>Term</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fee in fees %}
+                    <tr>
+                        <td>{{ fee.component.name }}</td>
+                        <td>₦{{ fee.amount }}</td>
+                        <td>{{ fee.academic_year }}</td>
+                        <td>{{ fee.term }}</td>
+                        <td>{{ fee.payment_status }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

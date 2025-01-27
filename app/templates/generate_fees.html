@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Class Fees{% endblock %}
+
+{% block content %}
+<h1>Generate Class Fees</h1>
+<p>Click the button below to generate and download the class fees in PDF format.</p>
+
+<!-- Generate Fees Button -->
+<a href="{{ url_for('main.generate_class_fees_pdf') }}" class="btn btn-primary" target="_blank">
+    Download Fees PDF
+</a>
+{% endblock %}

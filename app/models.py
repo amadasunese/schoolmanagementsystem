@@ -139,6 +139,7 @@ class Class(db.Model):
 
     # Many-to-Many Relationship with Teachers
     teachers = db.relationship('Teacher', secondary=class_teacher_association, backref='classes')
+    fee_components = db.relationship('ClassFeeComponent', backref='class_assoc', lazy=True)
 
     @property
     def teacher_names(self):
@@ -146,18 +147,7 @@ class Class(db.Model):
         Returns the names of all teachers assigned to the class.
         """
         return ', '.join([f"{teacher.first_name} {teacher.last_name}" for teacher in self.teachers])
-
-
-
-# class Subject(db.Model):
-#     __tablename__ = 'subjects'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
-
-#     # Relationships
-#     teacher_subjects = db.relationship('TeacherSubject', backref='subject', lazy=True)
-#     class_subjects = db.relationship('ClassSubject', backref='subject', lazy=True)
+    
 
 class Subject(db.Model):
     __tablename__ = 'subjects'
@@ -167,7 +157,6 @@ class Subject(db.Model):
 
     # Relationships
     teacher_subjects = db.relationship('TeacherSubject', backref='teacher_subject', lazy=True)
-    # assessment_scores = db.relationship('AssessmentSubjectScore', backref='subject', lazy=True)  # Unique backref
     assessment_scores = db.relationship('AssessmentSubjectScore', backref='subject_ref', lazy=True)
     class_subjects = db.relationship('ClassSubject', backref='class_subject', lazy=True)
 
@@ -186,31 +175,6 @@ class AssessmentType(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
 
 
-# class Assessment(db.Model):
-#     __tablename__ = 'assessments'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     date = db.Column(db.Date, nullable=False)
-#     assessment_type_id = db.Column(db.Integer, db.ForeignKey('assessment_types.id'), nullable=False)
-#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
-
-#     # Relationships
-#     assessment_type = db.relationship('AssessmentType', backref='assessments', lazy=True)
-#     scores = db.relationship('AssessmentSubjectScore', backref='assessment', lazy=True)
-
-# class Assessment(db.Model):
-#     __tablename__ = 'assessments'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     date = db.Column(db.Date, nullable=False)
-#     assessment_type_id = db.Column(db.Integer, db.ForeignKey('assessment_types.id'), nullable=False)
-#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
-#     academic_session = db.Column(db.String(20), nullable=False)  # E.g., "2024/2025"
-
-#     # Relationships
-#     assessment_type = db.relationship('AssessmentType', backref='assessments', lazy=True)
-#     scores = db.relationship('AssessmentSubjectScore', backref='assessment', lazy=True)
-
 class Assessment(db.Model):
     __tablename__ = 'assessments'
     id = db.Column(db.Integer, primary_key=True)
@@ -218,60 +182,13 @@ class Assessment(db.Model):
     date = db.Column(db.Date, nullable=False)
     assessment_type_id = db.Column(db.Integer, db.ForeignKey('assessment_types.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
-    academic_session = db.Column(db.String(20), nullable=False)  # E.g., "2024/2025"
-    term = db.Column(db.String(20), nullable=False)  # E.g., "Term 1"
+    academic_session = db.Column(db.String(20), nullable=False)
+    term = db.Column(db.String(20), nullable=False)
 
 
     # Relationships
     assessment_type = db.relationship('AssessmentType', backref='assessments', lazy=True)
     subject_scores = db.relationship('AssessmentSubjectScore', backref='assessmentsubjectscores', lazy=True)  # Updated backref
-
-
-
-# class AssessmentSubjectScore(db.Model):
-#     __tablename__ = 'assessment_subject_scores'
-#     id = db.Column(db.Integer, primary_key=True)
-#     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
-#     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
-#     total_marks = db.Column(db.Integer, nullable=False)
-
-# class AssessmentSubjectScore(db.Model):
-#     __tablename__ = 'assessment_subject_scores'
-#     id = db.Column(db.Integer, primary_key=True)
-#     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
-#     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
-#     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)  # Link to students
-#     total_marks = db.Column(db.Integer, nullable=False)
-
-#     assessment = db.relationship('Assessment', backref=db.backref('scores', lazy=True))
-#     subject = db.relationship('Subject', backref=db.backref('scores', lazy=True))
-#     student = db.relationship('Student', backref=db.backref('scores', lazy=True))
-
-# class AssessmentSubjectScore(db.Model):
-#     __tablename__ = 'assessment_subject_scores'
-#     id = db.Column(db.Integer, primary_key=True)
-#     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
-#     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
-#     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)  # Link to students
-#     total_marks = db.Column(db.Integer, nullable=False)
-
-#     # Update the backref names to avoid conflict
-#     assessment = db.relationship('Assessment', backref=db.backref('assessment_subject_scores', lazy=True))
-#     subject = db.relationship('Subject', backref=db.backref('subject_scores', lazy=True))
-#     student = db.relationship('Student', backref=db.backref('student_scores', lazy=True))
-
-# class AssessmentSubjectScore(db.Model):
-#     __tablename__ = 'assessment_subject_scores'
-#     id = db.Column(db.Integer, primary_key=True)
-#     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
-#     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
-#     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-#     total_marks = db.Column(db.Integer, nullable=False)
-
-#     # Relationships with unique backref names
-#     assessment = db.relationship('Assessment', backref=db.backref('subject_scores', lazy=True))  # Changed from `scores`
-#     subject = db.relationship('Subject', backref=db.backref('assessment_scores', lazy=True))     # Changed from `scores`
-#     student = db.relationship('Student', backref=db.backref('subjects_scores', lazy=True))     # Changed from `scores`
 
 
 class AssessmentSubjectScore(db.Model):
@@ -285,7 +202,6 @@ class AssessmentSubjectScore(db.Model):
     # Relationships with unique backref names
     assessment = db.relationship('Assessment', backref=db.backref('assessment_subject_scores', lazy=True)) 
     subject = db.relationship('Subject', backref=db.backref('subject_ref', lazy=True)) 
-    # subject = db.relationship('Subject', backref=db.backref('subject_assessments', lazy=True))  # Unique backref
     student = db.relationship('Student', backref=db.backref('student_assessments', lazy=True))  # Unique backref
 
 
@@ -321,3 +237,54 @@ class TeacherSubject(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
 
+
+# fees processing
+    
+class StudentFee(db.Model):
+    __tablename__ = 'student_fees'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)  # Amount charged for the component
+    academic_year = db.Column(db.String(10), nullable=False)  # e.g., 2023/2024
+    term = db.Column(db.String(20), nullable=False)  # e.g., First Term, Second Term
+    payment_status = db.Column(db.Enum('paid', 'unpaid', name='payment_status'), default='unpaid', nullable=False)
+
+    # Relationships
+    student = db.relationship('Student', backref='student_fees')
+    component = db.relationship('FeeComponent', backref='student_fees')
+
+class FeePayment(db.Model):
+    __tablename__ = 'fee_payments'
+    id = db.Column(db.Integer, primary_key=True)
+    student_fee_id = db.Column(db.Integer, db.ForeignKey('student_fees.id'), nullable=False)
+    amount_paid = db.Column(db.Float, nullable=False)  # Amount paid for the fee component
+    payment_date = db.Column(db.Date, nullable=False)  # Date of payment
+    payment_method = db.Column(db.String(50), nullable=False)  # e.g., Cash, Bank Transfer
+    receipt_number = db.Column(db.String(50), nullable=True)  # Optional receipt number
+    notes = db.Column(db.Text, nullable=True)  # Optional notes about the payment
+
+    # Relationships
+    student_fee = db.relationship('StudentFee', backref='fee_payments')
+
+class FeeComponent(db.Model):
+    __tablename__ = 'fee_components'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)  # e.g., Tuition Fee, PTA Levy
+    description = db.Column(db.Text, nullable=True)   # Optional description of the component
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+
+    # Relationships
+    school = db.relationship('School', backref='fee_components')
+    class_fees = db.relationship('ClassFeeComponent', backref='fee_component_assoc', lazy=True)
+
+class ClassFeeComponent(db.Model):
+    __tablename__ = 'class_fee_components'
+    id = db.Column(db.Integer, primary_key=True)
+    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
+    component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)  # Amount for this component in the class
+
+    # Relationships
+    class__ = db.relationship('Class', backref='class_fee_components_assoc')
+    fee_component = db.relationship('FeeComponent', backref='class_fee_components_assoc')

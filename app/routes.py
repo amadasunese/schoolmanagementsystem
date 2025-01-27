@@ -10,7 +10,7 @@ from .models import (
     User, Student, Teacher, Class, Attendance, Assessment, AssessmentType,
     AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject, School
 )
-from .models import Grade
+from .models import Grade, StudentFee, FeeComponent, FeePayment, ClassFeeComponent
 from flask_login import login_user, logout_user, login_required, current_user
 from io import BytesIO
 import pandas as pd
@@ -1074,3 +1074,449 @@ def assign_teachers():
 
 
     return render_template('assign_teachers.html', form=form)
+
+
+# School Fees Management
+
+
+import json
+
+fee_components = {
+    "Tuition Fee": "Fee for academic instruction and resources.",
+    "Registration Fee": "Fee for enrollment in the academic year.",
+    "PTA Levy": "Parent-Teacher Association levy for school activities.",
+    "Sports Fee": "Fee for participation in sports and physical activities.",
+    "Uniform Fee": "Cost of school uniforms.",
+    "Textbooks/Workbooks": "Cost of textbooks and workbooks for the academic year.",
+    "Examination Fee": "Fee for conducting examinations and assessments.",
+    "ICT Fee": "Fee for access to ICT facilities and resources.",
+    "Medical Fee": "Fee for access to medical facilities and services.",
+    "Miscellaneous": "Additional fees for other school-related activities."
+}
+
+# Save as JSON file
+with open("fee_components.json", "w") as file:
+    json.dump(fee_components, file, indent=4)
+
+# print("Fee components saved to 'fee_components.json'")
+
+
+@main.route('/fee_components')
+def fee_components():
+    # Fetch all fee components from the database
+    components = FeeComponent.query.all()
+    return render_template('fee_components.html', components=components)
+
+# @main.route('/add_fee_component', methods=['GET', 'POST'])
+# def add_fee_component():
+#     if request.method == 'POST':
+        
+#         # Get form data
+#         name = request.form['name']
+#         description = request.form['description']
+#         school_id = request.form['school_id']
+
+#         # Create a new FeeComponent
+#         component = FeeComponent(
+#             name=name,
+#             description=description,
+#             school_id=school_id
+#         )
+#         db.session.add(component)
+#         db.session.commit()
+#         flash('Fee component added successfully!', 'success')
+#         return redirect(url_for('main.fee_components'))
+
+#     # Fetch all schools for the dropdown
+#     schools = School.query.all()
+#     return render_template('add_fee_component.html', schools=schools)
+
+
+# Load fee components from the JSON file
+with open("fee_components.json", "r") as file:
+    fee_components_from_json = json.load(file)
+
+
+@main.route('/add_fee_component', methods=['GET', 'POST'])
+def add_fee_component():
+    if request.method == 'POST':
+        # Get form data
+        name = request.form['name']
+        description = request.form['description']
+        school_id = request.form['school_id']
+
+        # Create a new FeeComponent
+        component = FeeComponent(
+            name=name,
+            description=description,
+            school_id=school_id
+        )
+        db.session.add(component)
+        db.session.commit()
+        flash('Fee component added successfully!', 'success')
+        return redirect(url_for('main.fee_components'))
+
+    # Fetch all schools for the dropdown
+    schools = School.query.all()
+    return render_template('add_fee_component.html', schools=schools)
+
+
+# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+# def add_fee_component_to_class():
+#     if request.method == 'POST':
+#         class_id = request.form.get('class_id')
+#         components = FeeComponent.query.all()
+#         for component in components:
+#             amount_key = f"amount_{component.id}"
+#             amount = request.form.get(amount_key)
+#             if amount:
+#                 class_fee_component = ClassFeeComponent(
+#                     class_id=class_id,
+#                     component_id=component.id,
+#                     amount=float(amount)
+#                 )
+#                 db.session.add(class_fee_component)
+#         db.session.commit()
+#         flash('Fee components added to the class successfully!', 'success')
+#         return redirect(url_for('main.view_class_fees', class_id=class_id))
+
+#     # Load all classes and components (including those from the JSON file)
+#     classes = Class.query.all()
+#     components = FeeComponent.query.all()
+
+#     # Extend the components list with data from the JSON file if necessary
+#     for json_component in fee_components_from_json:
+#         if not any(c.name == json_component['name'] for c in components):
+#             components.append(json_component)
+
+#     return render_template(
+#         'add_fee_component_to_class.html',
+#         classes=classes,
+#         components=components
+#     )
+
+
+# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+# def add_fee_component_to_class():
+#     if request.method == 'POST':
+#         # Get the selected class ID
+#         class_id = request.form['class_id']
+
+#         # Loop through all fee components
+#         components = FeeComponent.query.all()
+#         for component in components:
+#             amount_field = f"amount_{component.id}"
+#             description_field = f"description_{component.id}"
+
+#             # Check if an amount is provided for this component
+#             if amount_field in request.form and request.form[amount_field]:
+#                 amount = float(request.form[amount_field])
+#                 description = request.form.get(description_field, "")
+
+#                 # Add the fee component to the database
+#                 class_fee_component = ClassFeeComponent(
+#                     class_id=class_id,
+#                     component_id=component.id,
+#                     amount=amount,
+#                     # description=description
+#                 )
+#                 db.session.add(class_fee_component)
+
+#         db.session.commit()
+#         flash('Fee components added to class successfully!', 'success')
+#         return redirect(url_for('main.view_class_fees', class_id=class_id))
+    
+
+#     # Fetch all classes and fee components for the form
+#     classes = Class.query.all()
+#     components = FeeComponent.query.all()
+#     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
+
+
+@main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+def add_fee_component_to_class():
+    if request.method == 'POST':
+        # Get the selected class ID
+        class_id = request.form['class_id']
+
+        # Get the list of selected component IDs
+        selected_components = request.form.getlist('selected_components')
+
+        # Loop through all selected fee components
+        for component_id in selected_components:
+            # Get the amount for the selected component
+            amount_field = f"amount_{component_id}"
+            if amount_field in request.form and request.form[amount_field]:
+                amount = float(request.form[amount_field])
+
+                # Add the fee component to the database
+                class_fee_component = ClassFeeComponent(
+                    class_id=class_id,
+                    component_id=int(component_id),
+                    amount=amount
+                )
+                db.session.add(class_fee_component)
+
+        db.session.commit()
+        flash('Selected fee components added to class successfully!', 'success')
+        return redirect(url_for('main.view_class_fees', class_id=class_id))
+    
+    # Fetch all classes and fee components for the form
+    classes = Class.query.all()
+    components = FeeComponent.query.all()
+    return render_template('add_fee_component_to_class.html', classes=classes, components=components)
+
+
+@main.route('/edit_fee_component/<int:id>', methods=['GET', 'POST'])
+def edit_fee_component(id):
+    component = FeeComponent.query.get_or_404(id)
+    if request.method == 'POST':
+        # Update the fee component
+        component.name = request.form['name']
+        component.description = request.form['description']
+        component.school_id = request.form['school_id']
+        db.session.commit()
+        flash('Fee component updated successfully!', 'success')
+        return redirect(url_for('main.fee_components'))
+
+    # Fetch all schools for the dropdown
+    schools = School.query.all()
+    return render_template('edit_fee_component.html', component=component, schools=schools)
+
+@main.route('/delete_fee_component/<int:id>', methods=['POST'])
+def delete_fee_component(id):
+    component = FeeComponent.query.get_or_404(id)
+    db.session.delete(component)
+    db.session.commit()
+    flash('Fee component deleted successfully!', 'success')
+    return redirect(url_for('main.fee_components'))
+
+
+
+@main.route('/student_fees')
+def student_fees():
+    # Fetch all student fees
+    fees = StudentFee.query.all()
+    return render_template('view_fees.html', fees=fees)
+
+
+from flask import Flask, render_template, request, send_file, flash
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from collections import defaultdict
+
+@main.route('/generate_class_fees_pdf', methods=['GET'])
+def generate_class_fees_pdf():
+    # school = School.query.all()
+    # assessment = Assessment.query.all()
+
+    # # Example school information (replace with database values if needed)
+    # school_name = school.name
+    # school_address = school.address
+    # academic_session = assessment.academic_session
+
+    # # Fetch class fees data (replace with actual database query)
+    # classes = Class.query.all()
+    # class_fees = []
+    # for cls in classes:
+    #     fee_components = ClassFeeComponent.query.filter_by(class_id=cls.id).all()
+    #     total_fee = sum([component.amount for component in fee_components])
+    #     class_fees.append({
+    #         "class_name": cls.class_name,
+    #         "total_fee": total_fee,
+    #         "fee_breakdown": [(comp.component.name, comp.amount) for comp in fee_components]
+    #     })
+
+    # Fetch the first school (adjust based on your requirements)
+    school = School.query.first()  # Assuming there's only one school entry in the database
+
+    # Handle case when no school is found
+    if not school:
+        return "School information not found", 404
+
+    # Fetch the latest assessment or a specific one
+    assessment = Assessment.query.first()  # Assuming you're fetching the first assessment
+
+    # Handle case when no assessment is found
+    if not assessment:
+        return "Assessment information not found", 404
+
+    # Example school information
+    school_name = school.name
+    school_address = school.address
+    academic_session = assessment.academic_session
+
+    # Fetch class fees data
+    classes = Class.query.all()
+    class_fees = []
+    for cls in classes:
+        # Fetch fee components for each class
+        fee_components = ClassFeeComponent.query.filter_by(class_id=cls.id).all()
+        total_fee = sum([component.amount for component in fee_components])
+        class_fees.append({
+            "class_name": cls.class_name,
+            "total_fee": total_fee,
+            "fee_breakdown": [(comp.fee_component.name, comp.amount) for comp in fee_components]
+        })
+
+    # Generate the PDF
+    buffer = BytesIO()
+    pdf = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+
+    # Add School Header
+    elements.append(Table(
+        [[school_name], [school_address], [academic_session]],
+        style=TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]),
+        colWidths=[500]
+    ))
+
+    elements.append(Table([[" "]]))  # Spacer
+
+    # Add Class Fees Table
+    data = [["Class Name", "Total Fee (₦)", "Fee Breakdown"]]
+    for class_fee in class_fees:
+        fee_breakdown_text = "\n".join([f"{name}: ₦{amount}" for name, amount in class_fee['fee_breakdown']])
+        data.append([class_fee['class_name'], f"₦{class_fee['total_fee']}", fee_breakdown_text])
+
+    table = Table(data, colWidths=[150, 100, 250])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(table)
+
+    pdf.build(elements)
+
+    # Return the PDF as a downloadable file
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
+
+@main.route('/generate_class_fees', methods=['GET'])
+def generate_class_fees():
+    return render_template('generate_fees.html')
+
+
+
+@main.route('/generate_fees', methods=['GET', 'POST'])
+def generate_fees():
+    if request.method == 'POST':
+        student_id = request.form['student_id']
+        component_id = request.form['component_id']
+        amount = float(request.form['amount'])
+        academic_year = request.form['academic_year']
+        term = request.form['term']
+
+        fee = StudentFee(
+            student_id=student_id,
+            component_id=component_id,
+            amount=amount,
+            academic_year=academic_year,
+            term=term,
+            payment_status='unpaid'
+        )
+        db.session.add(fee)
+        db.session.commit()
+        return redirect(url_for('main.view_fees', student_id=student_id))
+    return render_template('generate_fees.html')
+
+@main.route('/view_fees', methods=['GET'])
+def view_fees():
+    student_id = request.args.get('student_id')
+    fees = []
+    if student_id:
+        fees = StudentFee.query.filter_by(student_id=student_id).all()
+    return render_template('view_fees.html', fees=fees, student_id=student_id)
+
+
+# @main.route('/class_fee_components', methods=['GET'])
+# def display_class_fee_components():
+#     # Fetch all records from ClassFeeComponent
+#     class_fee_components = ClassFeeComponent.query.all()
+
+#     # Render the template and pass the data
+#     return render_template(
+#         'class_fee_components.html', 
+#         class_fee_components=class_fee_components
+#     )
+
+@main.route('/class_fee_components', methods=['GET'])
+def display_class_fee_components():
+    # Fetch all records from ClassFeeComponent
+    class_fee_components = ClassFeeComponent.query.all()
+
+    # Group fees by class
+    grouped_fees = defaultdict(list)
+    for component in class_fee_components:
+        grouped_fees[component.class__.class_name].append(component)
+
+    # Render the template and pass the grouped data
+    return render_template(
+        'class_fee_components.html', 
+        grouped_fees=grouped_fees
+    )
+
+@main.route('/view_class_fees/<int:class_id>')
+def view_class_fees(class_id):
+    # Fetch the specific class by its ID
+    selected_class = Class.query.get_or_404(class_id)
+    
+   
+    class_fee_components = ClassFeeComponent.query.filter_by(class_id=class_id).all()
+    return render_template('view_class_fees.html', selected_class=selected_class, class_fee_components=class_fee_components)
+
+
+
+@main.route('/remove_fee_component_from_class/<int:class_fee_component_id>', methods=['POST'])
+def remove_fee_component_from_class(class_fee_component_id):
+    class_fee_component = ClassFeeComponent.query.get_or_404(class_fee_component_id)
+    class_id = class_fee_component.class_id
+    db.session.delete(class_fee_component)
+    db.session.commit()
+    flash('Fee component removed from class successfully!', 'success')
+    return redirect(url_for('main.view_class_fees', class_id=class_id))
+
+@main.route('/record_payment', methods=['GET', 'POST'])
+def record_payment():
+    if request.method == 'POST':
+        student_fee_id = request.form['student_fee_id']
+        amount_paid = float(request.form['amount_paid'])
+        payment_date = request.form['payment_date']
+        payment_method = request.form['payment_method']
+        receipt_number = request.form.get('receipt_number')
+        notes = request.form.get('notes')
+
+        payment = FeePayment(
+            student_fee_id=student_fee_id,
+            amount_paid=amount_paid,
+            payment_date=payment_date,
+            payment_method=payment_method,
+            receipt_number=receipt_number,
+            notes=notes
+        )
+        db.session.add(payment)
+
+        # Update payment status
+        student_fee = StudentFee.query.get(student_fee_id)
+        total_paid = db.session.query(db.func.sum(FeePayment.amount_paid)).filter(
+            FeePayment.student_fee_id == student_fee_id
+        ).scalar() or 0
+        if total_paid >= student_fee.amount:
+            student_fee.payment_status = 'paid'
+        else:
+            student_fee.payment_status = 'unpaid'
+        db.session.commit()
+        return redirect(url_for('main.view_fees', student_id=student_fee.student_id))
+    return render_template('record_payment.html')

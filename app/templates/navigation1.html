@@ -36,6 +36,15 @@
                         <li><a class="dropdown-item" href="{{ url_for('main.assessment_types') }}">Assessment Types</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('main.assessment_subject_scores') }}">Assessment Subject Scores</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('main.add_assessment_score') }}">Add Assessment Score</a></li>
+                    </ul>
+                </li>
+
+                <!-- Grades and Attendance -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.endpoint in ['main.grades', 'main.add_grade', 'main.attendance', 'main.add_attendance'] %}active{% endif %}" href="#" id="gradesAttendanceDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Grades & Attendance
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="gradesAttendanceDropdown">
                         <li><a class="dropdown-item" href="{{ url_for('main.grades') }}">Grades</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('main.add_grade') }}">Add Grade</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('main.attendance') }}">Attendance</a></li>
