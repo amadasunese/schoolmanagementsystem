@@ -264,10 +264,25 @@ def uploaded_file(filename):
     return send_from_directory(Config.UPLOAD_FOLDER, filename)
 
 # Teacher route
-@main.route('/teachers')
+# @main.route('/teachers')
+# def teachers():
+#     teachers = Teacher.query.all()
+#     return render_template('teachers.html', teachers=teachers)
+
+@main.route('/teachers', methods=['GET'])
 def teachers():
-    teachers = Teacher.query.all()
+    search_query = request.args.get('search', '').strip().lower()
+    if search_query:
+        teachers = Teacher.query.filter(
+            (Teacher.first_name.ilike(f"%{search_query}%")) |
+            (Teacher.last_name.ilike(f"%{search_query}%")) |
+            (Teacher.qualification.ilike(f"%{search_query}%")) |
+            (Teacher.teacher_subjects.any(Subject.name.ilike(f"%{search_query}%")))
+        ).all()
+    else:
+        teachers = Teacher.query.all()
     return render_template('teachers.html', teachers=teachers)
+
 
 @main.route('/add_teacher', methods=['GET', 'POST'])
 @login_required
