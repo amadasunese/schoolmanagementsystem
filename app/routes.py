@@ -199,17 +199,17 @@ def attendance():
     return render_template('attendance.html', attendance=attendance)
 
 
-@main.route('/students')
+@main.route('/students', methods=['GET'])
 def students():
-    # Fetch all students along with their class information using eager loading
-    students = Student.query.join(Class, Student.class_id == Class.id).add_columns(
-        Student.id, 
-        Student.first_name, 
-        Student.last_name, 
-        Student.grade_level,
-        Student.enrollment_date,
-        Class.class_name.label('class_name')
-    ).all()
+    search_query = request.args.get('search', '').strip().lower()
+    if search_query:
+        students = Student.query.filter(
+            (Student.first_name.ilike(f"%{search_query}%")) |
+            (Student.last_name.ilike(f"%{search_query}%")) |
+            (Class.class_name.ilike(f"%{search_query}%"))
+        ).all()
+    else:
+        students = Student.query.all()
     return render_template('students.html', students=students)
 
 @main.route('/add_student', methods=['GET', 'POST'])
