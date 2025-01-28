@@ -115,23 +115,6 @@ class SubjectForm(FlaskForm):
     submit = SubmitField('Save Subject')
 
 
-# from flask_wtf import FlaskForm
-# from wtforms import StringField, SelectField, DateField, IntegerField, SubmitField
-# from wtforms.validators import DataRequired, Length
-
-# class ClassForm(FlaskForm):
-#     class_name = StringField('Class Name', validators=[DataRequired(), Length(max=100)])
-#     class_level = StringField('Class Level', validators=[DataRequired(), Length(max=50)])  # New field
-#     class_category = SelectField(
-#         'Class Category',
-#         choices=[('Nursery', 'Nursery'), ('Primary', 'Primary'), 
-#                  ('Junior Secondary', 'Junior Secondary'), ('Senior Secondary', 'Senior Secondary')],
-#         validators=[DataRequired()]
-#     )  
-#     teacher_id = IntegerField('Teacher ID', validators=[DataRequired()])
-#     submit = SubmitField('Add Class')
-
-
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, IntegerField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
@@ -140,23 +123,6 @@ from app.models import Teacher
 def validate_teacher_id(form, field):
     if field.data and not Teacher.query.get(field.data):
         raise ValidationError('Invalid Teacher ID.')
-
-# class ClassForm(FlaskForm):
-#     class_name = StringField('Class Name', validators=[DataRequired(), Length(max=100)])
-#     class_level = StringField('Class Level', validators=[DataRequired(), Length(max=50)])
-#     # class_category = SelectField(
-#     #     'Class Category',
-#     #     choices=[(category.name, category.value) for category in ClassCategory],
-#     #     validators=[DataRequired()]
-#     # )
-#     class_category = SelectField(
-#         'Class Category',
-#         choices=[('Nursery', 'Nursery'), ('Primary', 'Primary'), 
-#                  ('Junior Secondary', 'Junior Secondary'), ('Senior Secondary', 'Senior Secondary')],
-#         validators=[DataRequired()]
-#     )  
-#     teacher_id = IntegerField('Teacher ID', validators=[validate_teacher_id])
-#     submit = SubmitField('Add Class')
 
 
 class ClassForm(FlaskForm):

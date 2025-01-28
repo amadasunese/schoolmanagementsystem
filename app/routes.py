@@ -1,4 +1,4 @@
-# app/routes.py
+
 from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file
 from . import db
 import os
@@ -21,7 +21,14 @@ from werkzeug.utils import secure_filename
 from flask import current_app
 from config import Config
 from sqlalchemy.orm import joinedload
-
+from reportlab.lib.pagesizes import A4, letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle, SimpleDocTemplate
+from io import BytesIO
+from flask import send_file, jsonify
+import json
+from collections import defaultdict
 
 
 # Create a Blueprint instance
@@ -638,54 +645,97 @@ def delete_assessment(assessment_id):
 
 @main.route('/assessment_subject_scores')
 def assessment_subject_scores():
+    # Get filter parameters from the request
+    assessment_id = request.args.get('assessment')
+    academic_session = request.args.get('academic_session')
+    subject_id = request.args.get('subject')
+    student_id = request.args.get('student')
+    
 
-
-    # Fetch all records from AssessmentSubjectScore with their related assessments
-    scores = (
-        db.session.query(
-            AssessmentSubjectScore.id,
-            Assessment.name.label('assessment_name'),
-            Assessment.academic_session,
-            Subject.name.label('subject_name'),
-            Student.first_name,
-            Student.last_name,
-            Class.class_name,
-            AssessmentSubjectScore.total_marks
-        )
-        .join(Assessment, AssessmentSubjectScore.assessment_id == Assessment.id)
-        .join(Subject, AssessmentSubjectScore.subject_id == Subject.id)
-        .join(Student, AssessmentSubjectScore.student_id == Student.id)
-        .join(Class, Assessment.class_id == Class.id)
-        .all()
+    # Base query
+    query = db.session.query(
+        AssessmentSubjectScore,
+        Assessment.name.label('assessment_name'),
+        Subject.name.label('subject_name'),
+        Student.first_name,
+        Student.last_name,
+        AssessmentSubjectScore.total_marks,
+        Assessment.academic_session
+    ).join(
+        Assessment, AssessmentSubjectScore.assessment_id == Assessment.id
+    ).join(
+        Subject, AssessmentSubjectScore.subject_id == Subject.id
+    ).join(
+        Student, AssessmentSubjectScore.student_id == Student.id
     )
-    return render_template('assessment_subject_scores.html', scores=scores)
+
+    # Apply filters
+    if assessment_id:
+        query = query.filter(AssessmentSubjectScore.assessment_id == assessment_id)
+    if academic_session:
+        query = query.filter(Assessment.academic_session == academic_session)
+    if subject_id:
+        query = query.filter(AssessmentSubjectScore.subject_id == subject_id)
+    if student_id:
+        query = query.filter(AssessmentSubjectScore.student_id == student_id)
+
+    # Fetch filtered results
+    scores = query.all()
+
+    # Fetch filter options
+    assessments = Assessment.query.all()
+    academic_sessions = db.session.query(Assessment.academic_session).distinct().all()
+    subjects = Subject.query.all()
+    students = Student.query.all()
+
+    return render_template(
+        'assessment_subject_scores.html',
+        scores=scores,
+        assessments=assessments,
+        academic_sessions=[session[0] for session in academic_sessions],
+        subjects=subjects,
+        students=students
+    )
 
 @main.route('/add_assessment_score', methods=['GET', 'POST'])
 def add_assessment_score():
     if request.method == 'POST':
-        academic_session = request.form['academic_session']
-        assessment_id = request.form['assessment_id']
-        subject_id = request.form['subject_id']
-        student_id = request.form['student_id']
-        class_id = request.form['class_id']
-        total_marks = request.form['total_marks']
-
-        # Create a new score record
-        new_score = AssessmentSubjectScore(
-            assessment_id=assessment_id,
-            subject_id=subject_id,
-            student_id=student_id,
-            total_marks=total_marks
-        )
-        
         try:
-            db.session.add(new_score)
+            # Fetch the data from the form
+            academic_session = request.form.get('academic_session')
+            assessment_id = int(request.form.get('assessment_id'))
+            student_id = int(request.form.get('student_id'))
+            class_id = int(request.form.get('class_id'))
+
+            # Get the list of selected subjects (only subjects with checked checkboxes)
+            selected_subject_ids = request.form.getlist('selected_subjects')
+
+            # Loop through the selected subjects and collect scores
+            for subject_id in selected_subject_ids:
+                score_key = f"score_{subject_id}"
+                score_value = request.form.get(score_key)
+
+                if score_value:
+                    try:
+                        total_marks = int(score_value)
+                        # Add score entry to the database
+                        new_score = AssessmentSubjectScore(
+                            assessment_id=assessment_id,
+                            subject_id=int(subject_id),
+                            student_id=student_id,
+                            total_marks=total_marks
+                        )
+                        db.session.add(new_score)
+                    except ValueError:
+                        continue
+
             db.session.commit()
-            flash('Assessment score added successfully!', 'success')
+            flash("Assessment scores added successfully!", "success")
             return redirect(url_for('main.assessment_subject_scores'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error adding assessment score: {e}', 'danger')
+            flash(f"Error adding assessment scores: {e}", "danger")
+            return redirect(url_for('main.add_assessment_score'))
 
     # Fetch academic sessions, assessments, subjects, and students
     academic_sessions = list(set(assessment.academic_session for assessment in Assessment.query.all()))
@@ -693,7 +743,6 @@ def add_assessment_score():
     subjects = Subject.query.all()
     students = Student.query.all()
     classes = Class.query.all()
-
 
     return render_template(
         'add_assessment_subject_score.html',
@@ -707,41 +756,52 @@ def add_assessment_score():
 
 @main.route('/assessment_subject_scores/edit/<int:id>', methods=['GET', 'POST'])
 def edit_assessment_subject_score(id):
+    # Fetch the record to be edited
     score = AssessmentSubjectScore.query.get_or_404(id)
 
+    # If the form is submitted (POST request), update the score
     if request.method == 'POST':
+        # Update the score's fields from the form data
         score.subject_id = request.form['subject_id']
         score.total_marks = request.form['total_marks']
 
         try:
+            # Commit the changes to the database
             db.session.commit()
             flash('Assessment Subject Score updated successfully!', 'success')
-            return redirect(url_for('assessment_subject_scores'))
+            return redirect(url_for('main.assessment_subject_scores'))
         except Exception as e:
             db.session.rollback()
-            flash('Error updating score: ' + str(e), 'danger')
+            flash(f'Error updating score: {str(e)}', 'danger')
 
-    # Fetch related data for dropdowns
+    # Fetch data for dropdowns
     subjects = Subject.query.all()
     assessments = Assessment.query.all()
-    return render_template('edit_assessment_subject_score.html', score=score, subjects=subjects, assessments=assessments)
+
+    return render_template(
+        'edit_assessment_subject_score.html',
+        score=score,
+        subjects=subjects,
+        assessments=assessments
+    )
 
 
-
-# Route to delete an assessment subject score
 @main.route('/assessment_subject_scores/delete/<int:id>', methods=['POST'])
 def delete_assessment_subject_score(id):
+    # Fetch the record to be deleted
     score = AssessmentSubjectScore.query.get_or_404(id)
 
     try:
+        # Delete the score from the database
         db.session.delete(score)
         db.session.commit()
         flash('Assessment Subject Score deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash('Error deleting score: ' + str(e), 'danger')
+        flash(f'Error deleting score: {str(e)}', 'danger')
 
-    return redirect(url_for('assessment_subject_scores'))
+    return redirect(url_for('main.assessment_subject_scores'))
+
 
 # Route to view all subjects for a class
 @main.route('/class_subjects/<int:class_id>')
@@ -776,12 +836,7 @@ def add_class_subject(class_id):
     return render_template('add_class_subject.html', class_instance=class_instance, subjects=subjects)
 
 
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle
-from io import BytesIO
-from flask import send_file
+
 
 # def generate_result_sheet(student):
 #     buffer = BytesIO()
@@ -872,11 +927,6 @@ from flask import send_file
 #         mimetype='application/pdf'
 #     )
 
-from flask import send_file, jsonify
-from io import BytesIO
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-# from your_project.models import Student, SubjectScore, db  # Adjust import paths to match your project structure
 
 def generate_result_sheet(student):
     buffer = BytesIO()
@@ -948,41 +998,6 @@ def download_result(student_id):
 
         students_assessment = Assessment.query.all()
 
-         # Fetch student academic records
-        # students_assessment = Assessment.query.filter_by(assessment_id=assessments).all()
-        # students_assessment = Assessment.query.filter(Assessment.id.in_(assessments)).all()
-        # students_assessment = Assessment.query.filter_by(id=assessments).all()
-        # students_assessment = Assessment.query.filter_by(id=assessments).first()
-        # if not students_assessment:
-        #     return jsonify({"error": "Assessment not found"}), 404
-
-  
-
-
-
-        # Prepare student data
-        # student = {
-        #     "result_id": student_record.result_id,
-        #     "name": f"{student_record.first_name} {student_record.last_name}",
-        #     "sex": student_record.sex,
-        #     "term": student_record.term,
-        #     "session": student_record.session,
-        #     "times_present": student_record.times_present,
-        #     "times_opened": student_record.times_opened,
-        #     "class_name": student_record.class_name,
-        #     "subjects": [
-        #         {
-        #             "name": subject.subject_name,
-        #             "ca_scores": ", ".join(map(str, [subject.ca1, subject.ca2, subject.ca3])),
-        #             "term_summary": subject.term_summary
-        #         }
-        #         for subject in subjects
-        #     ],
-        #     "grand_total": sum(subject.total_score for subject in subjects),
-        #     "overall_grade": student_record.overall_grade,
-        #     "next_term": student_record.next_term
-        # }
-
         student = {
             "result_id": student_record.student.id,
             "name": f"{student_record.first_name} {student_record.last_name}",
@@ -1031,25 +1046,6 @@ def assign_teachers():
     form.class_id.choices = [(cls.id, cls.class_name) for cls in classes]
     form.teacher_ids.choices = [(teacher.id, f"{teacher.first_name} {teacher.last_name}") for teacher in teachers]
 
-    # if form.validate_on_submit():
-    #     class_id = form.class_id.data
-    #     selected_teacher_ids = form.teacher_ids.data
-
-    #     # Fetch the class and selected teachers
-    #     selected_class = Class.query.get(class_id)
-    #     selected_teachers = Teacher.query.filter(Teacher.id.in_(selected_teacher_ids)).all()
-
-    #     # Add teachers to the class
-    #     selected_class.teachers.extend(selected_teachers)
-
-    #     try:
-    #         db.session.commit()
-    #         flash('Teachers assigned successfully!', 'success')
-    #         return redirect(url_for('main.classes'))
-    #     except Exception as e:
-    #         db.session.rollback()
-    #         flash(f'Error assigning teachers: {str(e)}', 'danger')
-
     if form.validate_on_submit():
         class_id = form.class_id.data
         selected_teacher_ids = form.teacher_ids.data
@@ -1078,9 +1074,6 @@ def assign_teachers():
 
 # School Fees Management
 
-
-import json
-
 fee_components = {
     "Tuition Fee": "Fee for academic instruction and resources.",
     "Registration Fee": "Fee for enrollment in the academic year.",
@@ -1098,8 +1091,6 @@ fee_components = {
 with open("fee_components.json", "w") as file:
     json.dump(fee_components, file, indent=4)
 
-# print("Fee components saved to 'fee_components.json'")
-
 
 @main.route('/fee_components')
 def fee_components():
@@ -1107,31 +1098,7 @@ def fee_components():
     components = FeeComponent.query.all()
     return render_template('fee_components.html', components=components)
 
-# @main.route('/add_fee_component', methods=['GET', 'POST'])
-# def add_fee_component():
-#     if request.method == 'POST':
-        
-#         # Get form data
-#         name = request.form['name']
-#         description = request.form['description']
-#         school_id = request.form['school_id']
-
-#         # Create a new FeeComponent
-#         component = FeeComponent(
-#             name=name,
-#             description=description,
-#             school_id=school_id
-#         )
-#         db.session.add(component)
-#         db.session.commit()
-#         flash('Fee component added successfully!', 'success')
-#         return redirect(url_for('main.fee_components'))
-
-#     # Fetch all schools for the dropdown
-#     schools = School.query.all()
-#     return render_template('add_fee_component.html', schools=schools)
-
-
+#
 # Load fee components from the JSON file
 with open("fee_components.json", "r") as file:
     fee_components_from_json = json.load(file)
@@ -1159,79 +1126,6 @@ def add_fee_component():
     # Fetch all schools for the dropdown
     schools = School.query.all()
     return render_template('add_fee_component.html', schools=schools)
-
-
-# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
-# def add_fee_component_to_class():
-#     if request.method == 'POST':
-#         class_id = request.form.get('class_id')
-#         components = FeeComponent.query.all()
-#         for component in components:
-#             amount_key = f"amount_{component.id}"
-#             amount = request.form.get(amount_key)
-#             if amount:
-#                 class_fee_component = ClassFeeComponent(
-#                     class_id=class_id,
-#                     component_id=component.id,
-#                     amount=float(amount)
-#                 )
-#                 db.session.add(class_fee_component)
-#         db.session.commit()
-#         flash('Fee components added to the class successfully!', 'success')
-#         return redirect(url_for('main.view_class_fees', class_id=class_id))
-
-#     # Load all classes and components (including those from the JSON file)
-#     classes = Class.query.all()
-#     components = FeeComponent.query.all()
-
-#     # Extend the components list with data from the JSON file if necessary
-#     for json_component in fee_components_from_json:
-#         if not any(c.name == json_component['name'] for c in components):
-#             components.append(json_component)
-
-#     return render_template(
-#         'add_fee_component_to_class.html',
-#         classes=classes,
-#         components=components
-#     )
-
-
-# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
-# def add_fee_component_to_class():
-#     if request.method == 'POST':
-#         # Get the selected class ID
-#         class_id = request.form['class_id']
-
-#         # Loop through all fee components
-#         components = FeeComponent.query.all()
-#         for component in components:
-#             amount_field = f"amount_{component.id}"
-#             description_field = f"description_{component.id}"
-
-#             # Check if an amount is provided for this component
-#             if amount_field in request.form and request.form[amount_field]:
-#                 amount = float(request.form[amount_field])
-#                 description = request.form.get(description_field, "")
-
-#                 # Add the fee component to the database
-#                 class_fee_component = ClassFeeComponent(
-#                     class_id=class_id,
-#                     component_id=component.id,
-#                     amount=amount,
-#                     # description=description
-#                 )
-#                 db.session.add(class_fee_component)
-
-#         db.session.commit()
-#         flash('Fee components added to class successfully!', 'success')
-#         return redirect(url_for('main.view_class_fees', class_id=class_id))
-    
-
-#     # Fetch all classes and fee components for the form
-#     classes = Class.query.all()
-#     components = FeeComponent.query.all()
-#     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
-
 
 @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
 def add_fee_component_to_class():
@@ -1292,7 +1186,6 @@ def delete_fee_component(id):
     return redirect(url_for('main.fee_components'))
 
 
-
 @main.route('/student_fees')
 def student_fees():
     # Fetch all student fees
@@ -1300,44 +1193,18 @@ def student_fees():
     return render_template('view_fees.html', fees=fees)
 
 
-from flask import Flask, render_template, request, send_file, flash
-from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-from reportlab.lib import colors
-from collections import defaultdict
-
 @main.route('/generate_class_fees_pdf', methods=['GET'])
 def generate_class_fees_pdf():
-    # school = School.query.all()
-    # assessment = Assessment.query.all()
-
-    # # Example school information (replace with database values if needed)
-    # school_name = school.name
-    # school_address = school.address
-    # academic_session = assessment.academic_session
-
-    # # Fetch class fees data (replace with actual database query)
-    # classes = Class.query.all()
-    # class_fees = []
-    # for cls in classes:
-    #     fee_components = ClassFeeComponent.query.filter_by(class_id=cls.id).all()
-    #     total_fee = sum([component.amount for component in fee_components])
-    #     class_fees.append({
-    #         "class_name": cls.class_name,
-    #         "total_fee": total_fee,
-    #         "fee_breakdown": [(comp.component.name, comp.amount) for comp in fee_components]
-    #     })
 
     # Fetch the first school (adjust based on your requirements)
-    school = School.query.first()  # Assuming there's only one school entry in the database
+    school = School.query.first()
 
     # Handle case when no school is found
     if not school:
         return "School information not found", 404
 
     # Fetch the latest assessment or a specific one
-    assessment = Assessment.query.first()  # Assuming you're fetching the first assessment
+    assessment = Assessment.query.first()
 
     # Handle case when no assessment is found
     if not assessment:
@@ -1440,17 +1307,6 @@ def view_fees():
         fees = StudentFee.query.filter_by(student_id=student_id).all()
     return render_template('view_fees.html', fees=fees, student_id=student_id)
 
-
-# @main.route('/class_fee_components', methods=['GET'])
-# def display_class_fee_components():
-#     # Fetch all records from ClassFeeComponent
-#     class_fee_components = ClassFeeComponent.query.all()
-
-#     # Render the template and pass the data
-#     return render_template(
-#         'class_fee_components.html', 
-#         class_fee_components=class_fee_components
-#     )
 
 @main.route('/class_fee_components', methods=['GET'])
 def display_class_fee_components():

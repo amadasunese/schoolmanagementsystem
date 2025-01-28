@@ -197,6 +197,7 @@ class AssessmentSubjectScore(db.Model):
     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id', name='fk_assessment_subject_scores_subject_id'), nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    # marks_obtainable = db.Column(db.Float, nullable=False)
     total_marks = db.Column(db.Integer, nullable=False)
 
     # Relationships with unique backref names
