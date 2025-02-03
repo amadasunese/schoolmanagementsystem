@@ -61,7 +61,7 @@
                     <td>{{ teacher.address }}</td>
                     <td>{{ teacher.hire_date }}</td>
                     <td>
-                        {% for ts in teacher.subjects %}
+                        {% for ts in teacher.teacher_subjects %}
                             {{ ts.subject.name }}{% if not loop.last %}, {% endif %}
                         {% endfor %}
                     </td>

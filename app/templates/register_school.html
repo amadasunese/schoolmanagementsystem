@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
     <h1>Register School</h1>
-    <form method="POST">
-        {{ form.hidden_tag() }}
+    <form method="POST" enctype="multipart/form-data">  {{ form.hidden_tag() }}
         <p>{{ form.name.label }} {{ form.name(class="form-control") }}</p>
         <p>{{ form.address.label }} {{ form.address(class="form-control") }}</p>
         <p>{{ form.email.label }} {{ form.email(class="form-control") }}</p>
         <p>{{ form.phone_number.label }} {{ form.phone_number(class="form-control") }}</p>
         <p>{{ form.website.label }} {{ form.website(class="form-control") }}</p>
+
+        <p>{{ form.school_logo.label }} {{ form.school_logo(type="file", class="form-control-file") }}</p>  
         <p>{{ form.submit(class="btn btn-primary") }}</p>
     </form>
 {% endblock %}

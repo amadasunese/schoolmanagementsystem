@@ -40,7 +40,7 @@
                     <td>{{ student.class_name }}</td>
                     <td>{{ student.enrollment_date }}</td>
                     <td>
-                        <a href="{{ url_for('main.download_result', student_id=student.id) }}" class="btn btn-primary btn-sm">
+                        <a href="{{ url_for('main.download_result_sheet', student_id=student.id) }}" class="btn btn-primary btn-sm">
                             Download Result
                         </a>
                     </td>

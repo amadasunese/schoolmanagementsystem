@@ -15,6 +15,8 @@ class School(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     phone_number = db.Column(db.String(15), nullable=True)
     website = db.Column(db.String(100), nullable=True)
+    school_logo = db.Column(db.String(255), nullable=True)
+
 
     # Relationships
     users = db.relationship('User', backref='school', lazy=True)
@@ -223,20 +225,34 @@ class Grade(db.Model):
     grade = db.Column(db.String(5), nullable=False)
 
 
+# class Attendance(db.Model):
+#     __tablename__ = 'attendance'
+#     id = db.Column(db.Integer, primary_key=True)
+#     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
+#     attendance_date = db.Column(db.Date, nullable=False)
+#     status = db.Column(db.String(10), nullable=False)
+
 class Attendance(db.Model):
     __tablename__ = 'attendance'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
-    attendance_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(10), nullable=False)
+    days_present = db.Column(db.Integer, nullable=False, default=0)  # Tracks days student was present
+    total_days_opened = db.Column(db.Integer, nullable=False, default=0)  # Tracks total school days
 
 
 class TeacherSubject(db.Model):
-    __tablename__ = 'teacher_subjects'
+    __tablename__ = 'teacher_subject'
     id = db.Column(db.Integer, primary_key=True)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+
+    # Relationship with Subject
+    subject = db.relationship('Subject', backref='teachers_subjects')
+
+    def __repr__(self):
+        return f"<TeacherSubject teacher_id={self.teacher_id}, subject_id={self.subject_id}>"
 
 
 # fees processing

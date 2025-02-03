@@ -10,15 +10,14 @@
 
     <!-- Class Selection -->
     <div class="form-group">
-        <label for="class_id">Select Classes</label>
-        <div>
+        <label for="class_id">Class</label>
+        <select class="form-control" id="class_id" name="class_id" required>
+            <!-- Placeholder Option -->
+            <option value="" disabled selected>Select a class</option>
             {% for class in classes %}
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input" name="selected_classes" value="{{ class.id }}" id="class_{{ class.id }}">
-                <label class="form-check-label" for="class_{{ class.id }}">{{ class.class_name }}</label>
-            </div>
+                <option value="{{ class.id }}">{{ class.class_name }}</option>
             {% endfor %}
-        </div>
+        </select>
     </div>
 
     <!-- Fee Components -->

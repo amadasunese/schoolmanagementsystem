@@ -23,6 +23,7 @@ class SchoolForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email(), Length(max=100)])
     phone_number = StringField('Phone Number', validators=[Length(max=15)])
     website = StringField('Website', validators=[Length(max=100)])
+    school_logo = FileField('School Logo', validators=[FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Register School')
 
 
@@ -82,13 +83,35 @@ class GradeForm(FlaskForm):
     grade = IntegerField('Grade', validators=[DataRequired(), NumberRange(min=0, max=100)])
     submit = SubmitField('Save')
 
+# class AttendanceForm(FlaskForm):
+#     student_id = IntegerField('Student ID', validators=[DataRequired(), NumberRange(min=1)])
+#     class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
+#     attendance_date = DateField('Attendance Date', validators=[DataRequired()])
+#     status = SelectField('Status', choices=[('Present', 'Present'), ('Absent', 'Absent')], validators=[DataRequired()])
+#     submit = SubmitField('Save')
+
+
+
+# class AttendanceForm(FlaskForm):
+#     student_id = IntegerField('Student ID', validators=[DataRequired(), NumberRange(min=1)])
+#     class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
+#     days_present = IntegerField('Days Present', validators=[DataRequired(), NumberRange(min=0)])
+#     total_days_opened = IntegerField('Total Days Opened', validators=[DataRequired(), NumberRange(min=1)])
+#     submit = SubmitField('Save')
+
 class AttendanceForm(FlaskForm):
-    student_id = IntegerField('Student ID', validators=[DataRequired(), NumberRange(min=1)])
-    class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
-    attendance_date = DateField('Attendance Date', validators=[DataRequired()])
-    status = SelectField('Status', choices=[('Present', 'Present'), ('Absent', 'Absent')], validators=[DataRequired()])
+    student_id = SelectField('Student', coerce=int, validators=[DataRequired()])
+    class_id = SelectField('Class', coerce=int, validators=[DataRequired()])
+    days_present = IntegerField('Days Present', validators=[DataRequired(), NumberRange(min=0)])
+    total_days_opened = IntegerField('Total School Days', validators=[DataRequired(), NumberRange(min=1)])
     submit = SubmitField('Save')
 
+class AttendanceForm(FlaskForm):
+    student_id = SelectField('Student', coerce=int, validators=[DataRequired()])  # Ensure choices are set dynamically
+    days_present = IntegerField('Days Present', validators=[DataRequired(), NumberRange(min=0)])
+    total_days_opened = IntegerField('Total School Days', validators=[DataRequired(), NumberRange(min=1)])
+    submit = SubmitField('Save')
+    
 
 class AssessmentForm(FlaskForm):
     name = StringField('Assessment Name', validators=[DataRequired()])
@@ -144,3 +167,16 @@ class AssignTeachersForm(FlaskForm):
     class_id = SelectField('Class', coerce=int)
     teacher_ids = SelectMultipleField('Teachers', coerce=int)
     submit = SubmitField('Assign Teachers')
+
+
+
+class AssignSubjectToClassForm(FlaskForm):
+    # Dropdown for selecting a class
+    class_id = SelectField(
+        'Class',  # Label for the dropdown
+        coerce=int,  # Ensure the selected value is an integer
+        validators=[DataRequired()]  # Ensure a class is selected
+    )
+
+    # Submit button
+    submit = SubmitField('Assign Subject to Class')
