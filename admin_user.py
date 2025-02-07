@@ -1,62 +1,3 @@
-# """
-# This script is used to create admin users.
-
-# Usage: python admin_user.py
-# """
-
-# from app import create_app, db
-# from app.models import User, School  # Ensure you import the correct User and School models
-
-
-# def create_admin():
-#     # Initialize the app context
-#     app = create_app()
-#     with app.app_context():
-#         # Check if the admin user already exists
-#         existing_admin = User.query.filter_by(username='admin').first()
-#         if existing_admin:
-#             print("Admin user already exists.")
-#             return
-
-#         # List available schools for selection
-#         schools = School.query.all()
-#         if not schools:
-#             print("No schools found. Please create a school before creating an admin user.")
-#             return
-
-#         print("Available Schools:")
-#         for school in schools:
-#             print(f"{school.id}: {school.name}")
-
-#         try:
-#             # Prompt the user to select a school by ID
-#             school_id = int(input("Enter the ID of the school to associate with this admin user: "))
-#             selected_school = School.query.get(school_id)
-#             if not selected_school:
-#                 print("Invalid school ID. Admin user creation aborted.")
-#                 return
-#         except ValueError:
-#             print("Invalid input. Admin user creation aborted.")
-#             return
-
-#         # Create the admin user
-#         admin = User(
-#             username='admin',
-#             is_admin=True,
-#             school_id=selected_school.id
-#         )
-#         admin.set_password('1234567')  # You can change this to a more secure password
-
-#         # Add the admin user to the session and commit
-#         db.session.add(admin)
-#         db.session.commit()
-
-#         print(f"Admin user created successfully for school: {selected_school.name}")
-
-
-# if __name__ == "__main__":
-#     create_admin()
-
 
 """
 This script is used to create schools and admin users.
@@ -64,7 +5,7 @@ This script is used to create schools and admin users.
 Usage: python admin_user.py
 """
 
-from app import create_app, db
+from app.main import create_app, db
 from app.models import User, School
 
 

@@ -5,7 +5,7 @@ This script should be run in a shell with the necessary environment variables se
 
 Usage: python admin_user.py
 """
-from app import create_app, db
+from app.main import create_app, db
 from app.models import User
 
 def create_admin():
