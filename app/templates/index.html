@@ -1,43 +1,186 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    /* General Styling */
 
+{% if current_user.is_authenticated %}
+    <script>
+        var role = "{{ current_user.role }}";  // Get role from Flask
+        if (role === "admin") {
+            window.location.href = "{{ url_for('main.dashboard') }}";
+        } else if (role === "teacher") {
+            window.location.href = "{{ url_for('main.teacher_dashboard') }}";
+        } else if (role === "student") {
+            window.location.href = "{{ url_for('main.student_dashboard') }}";
+        } else {
+            window.location.href = "{{ url_for('main.index') }}";  // Default redirect
+        }
+    </script>
+{% endif %}
 
-</style>
 <div class="landing-container">
-    <div class="hero">
+    <div class="background-image"></div>  <div class="hero">
         <h1>Welcome to School Management Portal</h1>
         <p>Your trusted platform for managing student success, teacher guidance, and educational progress all in one place.</p>
-        {% if is_authenticated %}
-            <a href="{{ url_for('main.logout') }}" class="cta-button">Logout</a>
-        {% else %}
-            <a href="{{ url_for('main.login') }}" class="cta-button">Admin Login</a>
-        {% endif %}
-    </div>
 
-    <section class="features">
-        <div class="feature">
-            <h3>Student Profiles</h3>
-            <p>Track and manage profiles for all aspiring learners, complete with personal and academic information.</p>
+        <div class="login-form-container">  <h2>Login</h2>
+            <form id="login-form" method="POST" action="{{ url_for('main.index') }}">
+                {{ form.csrf_token }}  <div class="form-group">
+                    {{ form.username.label(class="form-label") }}
+                    {{ form.username(class="form-control", placeholder="Username", required=true) }}
+                    {% if form.username.errors %}
+                        <ul class="errors">
+                            {% for error in form.username.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.password.label(class="form-label") }}
+                    {{ form.password(class="form-control", placeholder="Password", required=true, type="password") }}
+                    {% if form.password.errors %}
+                        <ul class="errors">
+                            {% for error in form.password.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+                <button type="submit" class="cta-button">Login</button>
+            </form>
+            {% if error %}  <p class="error-message">{{ error }}</p>
+            {% endif %}
         </div>
-        <div class="feature">
-            <h3>Classes & Attendance</h3>
-            <p>Manage classes, schedules, and keep accurate attendance records for each student’s journey.</p>
-        </div>
-        <div class="feature">
-            <h3>Grades & Performance</h3>
-            <p>Monitor academic performance and generate detailed grade reports for tracking success.</p>
-        </div>
-        <div class="feature">
-            <h3>Teacher Management</h3>
-            <p>Keep track of teacher profiles, including subject expertise, schedules, and contact information.</p>
-        </div>
-        <div class="feature">
-            <h3>Comprehensive Reporting</h3>
-            <p>Generate and export reports in Microsoft Excel and Word formats for easy data sharing.</p>
-        </div>
-    </section>
+
+
+    </div>
 </div>
+
+<style>
+    /* body, html {
+    height: 100%;
+    margin: 0;
+    
+} */
+
+    .landing-container {
+        display: flex;
+        flex-direction: column; /* Stack hero and features vertically */
+        /* min-height: 100vh; Ensure container takes full viewport height */
+        font-family: sans-serif; /* Set a default font */
+        overflow: hidden; /* Prevent background image from overflowing */
+        padding: 1px;
+    }
+
+    .background-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('static/images/students.jpg'); /* Replace with your image path */
+        background-size: cover;
+        background-position: center;
+        z-index: -1; /* Place image behind other content */
+        opacity: 0.5; /* Adjust opacity for better readability of text */
+        margin-top: 10px;
+    }
+
+    .hero {
+        text-align: center;
+        padding: 30px 20px; /* Increased padding for better spacing */
+        color: #333; /* Darker text color for contrast against background */
+        position: relative; /* Needed for proper z-index on the form */
+        z-index: 1; /* Ensure hero content is above image */
+        background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
+        margin-bottom: 20px;
+    }
+
+    .login-form-container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin: 20px auto; /* Center the form */
+        max-width: 400px; /* Set a maximum width for the form */
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    .cta-button {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #007bff; /* Example blue color */
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-top: 10px; /* Add margin to the button */
+    }
+
+    /* .features {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 20px;
+        background-color: #f8f9fa; 
+        position: relative;
+        z-index: 1;
+    } */
+
+    /* .feature {
+        width: 30%; 
+        margin: 20px;
+        text-align: center;
+    }
+
+    .feature h3 {
+        margin-bottom: 10px;
+    } */
+
+    .error-message {
+        color: red;
+        margin-top: 10px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .feature {
+            width: 45%; /* Two features per row on smaller screens */
+        }
+        .hero {
+            padding: 50px 10px; /* Adjust padding for smaller screens */
+        }
+    }
+
+    @media (max-width: 500px) {
+        .feature {
+            width: 90%; /* One feature per row on very small screens */
+        }
+    }
+</style>
+
+<script>
+    // You can also handle redirection here
+    document.addEventListener("DOMContentLoaded", function() {
+        if ("{{ current_user.is_authenticated }}" === "True") {
+            window.location.href = "{{ url_for('main.dashboard') }}";
+        }
+    });
+</script>
+
 {% endblock %}

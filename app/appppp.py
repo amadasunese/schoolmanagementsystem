@@ -1,16 +1,16 @@
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file
-from extensions import db
+from app import db
 import os
-from forms import (
+from .forms import (
     TeacherForm, ClassForm, GradeForm, AttendanceForm, StudentForm, AssignTeachersForm,
-    AssessmentForm, AssessmentResultForm, SubjectForm, SchoolForm, UserForm, AssessmentTypeForm, AssignSubjectToClassForm, LoginForm
+    AssessmentForm, AssessmentResultForm, SubjectForm, SchoolForm, UserForm, AssessmentTypeForm, AssignSubjectToClassForm
 )
-from models import (
+from .models import (
     User, Student, Teacher, Class, Attendance, Assessment, AssessmentType,
     AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject, School
 )
-from models import Grade, StudentFee, FeeComponent, FeePayment, ClassFeeComponent
+from .models import Grade, StudentFee, FeeComponent, FeePayment, ClassFeeComponent
 from flask_login import login_user, logout_user, login_required, current_user
 from io import BytesIO
 import pandas as pd
@@ -29,239 +29,36 @@ from io import BytesIO
 from flask import send_file, jsonify
 import json
 from collections import defaultdict
-from sqlalchemy.orm import aliased
 
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.utils import ImageReader
-from flask import g 
 
 # Create a Blueprint instance
 main = Blueprint('main', __name__)
 # Login route
 
-
-@main.route('/static/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(Config.UPLOAD_FOLDER, filename)
-
-@main.before_request
-def before_request():
-    school = School.query.first()  # Or your logic to get the school
-    if school:
-        g.school_name = school.name
-    else:
-        g.school_name = None # Handle the case where no school is found
-
-# ... your routes ...
-        
-# @main.route('/')
-# def index():
-#     return render_template('index.html', is_authenticated=current_user.is_authenticated)
-
-# @main.route('/', methods=['GET', 'POST'])  # Add POST method
-# def index():
-#     form = LoginForm()  # Create an instance of the form
-#     if form.validate_on_submit():  # Check if the form is submitted and valid
-#         # ... your login logic here ...
-#         user = User.query.filter_by(username=form.username.data).first()
-#         if user and user.check_password(form.password.data):
-#             login_user(user)
-#             return redirect(url_for('main.dashboard')) # Redirect after login
-#         else:
-#             flash('Invalid username or password')  # Display error message
-#             return render_template('index.html', form=form, is_authenticated=current_user.is_authenticated, error="Invalid credentials") #re-render the form with error message
-#     return render_template('index.html', form=form, is_authenticated=current_user.is_authenticated) # Pass the form to the template
-
-@main.route('/', methods=['GET', 'POST'])  # Add POST method
+@main.route('/')
 def index():
-    form = LoginForm()  # Create an instance of the form
-    if form.validate_on_submit():  # Check if the form is submitted and valid
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user)
-            if user.role == 'admin':
-                return redirect(url_for('main.dashboard'))
-            elif user.role == 'teacher':
-                return redirect(url_for('main.teacher.dashboard'))
-            else:  # Assuming 'student' is the only other role
-                return redirect(url_for('main.student_dashboard'))
-        else:
-            flash('Invalid username or password', 'danger') # Use 'danger' category for styling
-            return render_template('index.html', form=form, is_authenticated=current_user.is_authenticated)  # Re-render with form
+    return render_template('index.html', is_authenticated=current_user.is_authenticated)
 
-    return render_template('index.html', form=form, is_authenticated=current_user.is_authenticated)  # Pass the form to the template
+
 
 
 @main.route('/register_school', methods=['GET', 'POST'])
 def register_school():
     form = SchoolForm()
     if form.validate_on_submit():
-        school_logo_path = None
-
-        if form.school_logo.data:
-            logo_file = form.school_logo.data
-            filename = secure_filename(logo_file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            try:
-                logo_file.save(filepath)
-                school_logo_path = filepath
-                flash('Logo uploaded successfully!', 'success')
-            except Exception as e:
-                flash(f'Error uploading logo: {e}', 'danger')
-                print(f"Logo upload error: {e}")
         school = School(
             name=form.name.data,
             address=form.address.data,
             email=form.email.data,
             phone_number=form.phone_number.data,
-            school_logo=school_logo_path,
             website=form.website.data
         )
-
-
-        try:
-            db.session.add(school)
-            db.session.commit()
-            flash('School registered successfully!', 'success')
-            return redirect(url_for('main.register_user'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Database error: {e}", "danger")
-            print(f"Database error: {e}")
-            return render_template('register_school.html', form=form)
-
+        db.session.add(school)
+        db.session.commit()
+        flash('School registered successfully!', 'success')
+        return redirect(url_for('main.register_user'))
     return render_template('register_school.html', form=form)
 
-
-@main.route('/schools')
-def schools():
-    schools = School.query.all()
-    return render_template('schools.html', schools=schools)
-
-# Route to delete a school
-@main.route('/delete/<int:id>')
-def delete_school(id):
-    school = School.query.get_or_404(id)
-    db.session.delete(school)
-    db.session.commit()
-    return redirect(url_for('main.schools'))
-
-
-# @main.route('/edit/<int:id>', methods=['GET', 'POST'])
-# def edit_school(id):
-#     school = School.query.get_or_404(id)
-#     form = SchoolForm(obj=school)
-
-#     if form.validate_on_submit():
-#         school.name = form.name.data
-#         school.address = form.address.data
-#         school.email = form.email.data
-#         school.phone_number = form.phone_number.data
-#         school.school_logo = form.school_logo.data
-#         school.website = form.website.data
-
-#         # Handle photo upload
-#         if form.school_logo.data:
-#             photo_file = form.school_logo.data
-#             photo_filename = secure_filename(photo_file.filename)
-#             photo_path = os.path.join(Config.UPLOAD_FOLDER, photo_filename)
-#             os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-
-#             try:
-#                 # Delete old logo if it exists
-#                 if school.school_logo and os.path.exists(school.school_logo):
-#                     os.remove(school.school_logo)
-
-#                 photo_file.save(photo_path)
-#                 school.school_logo = photo_path
-#                 flash('Logo updated successfully!', 'success')
-
-#             except Exception as e:
-#                 flash(f'Error updating logo: {e}', 'danger')
-#                 print(f"Logo update error: {e}")
-
-#         try:
-#             db.session.commit()
-#             flash('School updated successfully!', 'success')
-#             return redirect(url_for('main.schools'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f"Database error: {e}", "danger")
-#             print(f"Database error: {e}")
-#             return render_template('edit_schools.html', school=school, form=form)
-
-#     return render_template('edit_schools.html', school=school, form=form)
-
-@main.route('/edit/<int:id>', methods=['GET', 'POST'])
-def edit_school(id):
-    school = School.query.get_or_404(id)
-    form = SchoolForm(obj=school)
-
-    photo_filename = None
-
-    if form.validate_on_submit():
-        print("Form is valid")
-        print("Form Data:", form.data)
-
-        school.name = form.name.data
-        school.address = form.address.data
-        school.email = form.email.data
-        school.phone_number = form.phone_number.data
-        school.website = form.website.data
-        school.school_logo = photo_filename
-    
-    
-
-        # Handle photo upload
-        if form.school_logo.data:
-            try:
-                photo_file = form.school_logo.data
-                photo_filename = secure_filename(photo_file.filename)
-                photo_path = os.path.join(Config.UPLOAD_FOLDER, photo_filename)
-                os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-
-                # Delete old logo if it exists (and if you're storing the full path)
-                if school.school_logo:
-                    old_photo_path = os.path.join(Config.UPLOAD_FOLDER, school.school_logo)
-                    if os.path.exists(old_photo_path):
-                        os.remove(old_photo_path)
-
-                photo_file.save(photo_path)
-                school.school_logo = photo_filename
-
-                flash('Logo updated successfully!', 'success')
-
-            except Exception as e:
-                flash(f'Error updating logo: {e}', 'danger')
-                print(f"Logo update error: {e}")
-
-        try:
-            db.session.commit()
-            flash('School updated successfully!', 'success')
-            return redirect(url_for('main.schools'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Database error: {e}", "danger")
-            print(f"Database error: {e}")
-            return render_template('edit_schools.html', school=school, form=form)
-
-    else:
-        print("Form is not valid. Errors:", form.errors)
-
-    return render_template('edit_schools.html', school=school, form=form)
 
 @main.route('/register_user', methods=['GET', 'POST'])
 def register_user():
@@ -287,22 +84,24 @@ def register_user():
             flash('An error occurred while registering the user.', 'danger')
     return render_template('register_user.html', form=form)
 
-# @main.route('/login', methods=['GET', 'POST'])
-# def login():
-#     if request.method == 'POST':
-#         username = request.form['username']
-#         password = request.form['password']
-#         user = User.query.filter_by(username=username).first()
-#         if user and user.check_password(password):
-#             login_user(user)
-#             if user.role == 'admin':
-#                 return redirect(url_for('main.dashboard'))
-#             elif user.role == 'teacher':
-#                 return redirect(url_for('main.teacher.dashboard'))
-#             else:
-#                 return redirect(url_for('main.student_dashboard'))
-#         flash('Invalid username or password', 'danger')
-#     return render_template('login.html')
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            login_user(user)
+            if user.role == 'admin':
+                return redirect(url_for('main.dashboard'))
+            elif user.role == 'teacher':
+                return redirect(url_for('main.teacher.dashboard'))
+            else:
+                return redirect(url_for('main.student.dashboard'))
+        flash('Invalid username or password', 'danger')
+    return render_template('login.html')
+
+
 
 
 @main.route('/logout')
@@ -310,7 +109,7 @@ def register_user():
 def logout():
     logout_user()
     flash('You have been logged out.', 'success')
-    return redirect(url_for('main.index'))
+    return redirect(url_for('main.login'))
 
 # Student Dashboard (Only accessible by Students)
 @main.route('/student/dashboard')
@@ -318,8 +117,8 @@ def logout():
 def student_dashboard():
     if current_user.role!= 'student':
         return redirect(url_for('main.index'))
-    student = Student.query.get(current_user.id).last_name
-    return render_template('student_dashboard.html', student=student)
+    student_name = Student.query.get(current_user.id).name
+    return render_template('student_dashboard.html', student_name=student_name)
 
 # Teacher Dashboard (Only accessible by Teachers)
 @main.route('/teacher/dashboard')
@@ -349,8 +148,7 @@ def dashboard():
 @main.route('/generate_report/<report_type>')
 @login_required
 def generate_report(report_type):
-
-    # Fetching data for report
+    # Sample data fetching for report
     data = {
         "Students": pd.read_sql(Student.query.statement, db.session.bind),
         "Teachers": pd.read_sql(Teacher.query.statement, db.session.bind),
@@ -386,12 +184,49 @@ def generate_report(report_type):
         return send_file(output, attachment_filename="report.docx", as_attachment=True)
 
 
+
+
 # Grades routes
 @main.route('/grades')
 def grades():
     grades = Grade.query.all()
     return render_template('grades.html', grades=grades)
 
+# # Attendance routes
+# @main.route('/attendance')
+# def attendance():
+#     attendance = Attendance.query.all()
+#     return render_template('attendance.html', attendance=attendance)
+
+# @main.route('/add_attendance', methods=['GET', 'POST'])
+# @login_required
+# def add_attendance():
+#     form = AttendanceForm()
+#     if form.validate_on_submit():
+#         attendance = Attendance(
+#             student_id=form.student_id.data,
+#             class_id=form.class_id.data,
+#             date=form.date.data,
+#             status=form.status.data
+#         )
+#         db.session.add(attendance)
+#         db.session.commit()
+#         flash('Attendance record added successfully!')
+#         return redirect(url_for('main.attendance'))
+#     return render_template('add_attendance.html', form=form)
+
+# @main.route('/attendance')
+# def attendance():
+#     attendance_records = Attendance.query.join(Student).add_columns(
+#         Student.first_name.label("student_name"),
+#         Attendance.days_present,
+#         Attendance.total_days_opened
+#     ).all()
+
+#     return render_template(
+#         'attendance.html',
+#         attendance_records=attendance_records
+    # )
 
 @main.route('/attendance')
 @login_required
@@ -411,6 +246,235 @@ def attendance():
     return render_template('attendance.html', attendance_records=attendance_records)
 
 
+# @main.route('/add_attendance', methods=['GET', 'POST'])
+# @login_required
+# def add_attendance():
+#     form = AttendanceForm()
+
+#     # Fetch all students and join with the classes table
+#     students = (
+#         db.session.query(
+#             Student.id,
+#             Student.first_name,
+#             Student.last_name,
+#             Class.class_name  # Assuming 'class_name' is the correct column in the classes table
+#         )
+#         .join(Class, Student.class_id == Class.id)
+#         .all()
+#     )
+
+#     if form.validate_on_submit():
+#         student_id = form.student_id.data
+#         status = form.status.data  # 'Present' or 'Absent'
+
+#         # Fetch student's class dynamically
+#         student = Student.query.get(student_id)
+#         if not student:
+#             flash("Invalid student selected.", "danger")
+#             return redirect(url_for('main.add_attendance'))
+
+#         class_id = student.class_id  # Auto-detect class from Student model
+
+#         # Check if attendance record exists
+#         attendance = Attendance.query.filter_by(student_id=student_id, class_id=class_id).first()
+
+#         if attendance:
+#             attendance.total_days_opened += 1  # Always increase school days
+#             if status == "Present":
+#                 attendance.days_present += 1
+#         else:
+#             # Create a new attendance record
+#             attendance = Attendance(
+#                 student_id=student_id,
+#                 class_id=class_id,
+#                 days_present=days_present,
+#                 total_days_opened=total_days_opened
+#             )
+#             db.session.add(attendance)
+
+#         db.session.commit()
+#         flash('Attendance record updated successfully!', 'success')
+#         return redirect(url_for('main.attendance'))
+
+#     return render_template('add_attendance.html', form=form, students=students)
+
+
+
+# @main.route('/add_attendance', methods=['GET', 'POST'])
+# @login_required
+# def add_attendance():
+#     form = AttendanceForm()
+
+#     # Fetch students and their classes
+#     students = (
+#         db.session.query(
+#             Student.id,
+#             Student.first_name,
+#             Student.last_name,
+#             Class.class_name
+#         )
+#         .join(Class, Student.class_id == Class.id)
+#         .all()
+#     )
+
+#     # Populate student dropdown
+#     form.student_id.choices = [(s.id, f"{s.first_name} {s.last_name}") for s in students]
+
+#     if form.validate_on_submit():
+#         student_id = form.student_id.data
+#         days_present = form.days_present.data
+#         total_days_opened = form.total_days_opened.data
+
+#         # Fetch the student's class automatically
+#         student = Student.query.get(student_id)
+#         if not student:
+#             flash("Invalid student selected.", "danger")
+#             return redirect(url_for('main.add_attendance'))
+
+#         class_id = student.class_id  # Auto-detect class
+
+#         # Check if an attendance record exists for this student
+#         attendance = Attendance.query.filter_by(student_id=student_id, class_id=class_id).first()
+
+#         if attendance:
+#             # Update attendance
+#             attendance.days_present = days_present
+#             attendance.total_days_opened = total_days_opened
+#         else:
+#             # Create a new attendance record
+#             attendance = Attendance(
+#                 student_id=student_id,
+#                 class_id=class_id,
+#                 days_present=days_present,
+#                 total_days_opened=total_days_opened
+#             )
+#             db.session.add(attendance)
+
+#         db.session.commit()
+#         flash('Attendance record updated successfully!', 'success')
+#         return redirect(url_for('main.attendance'))
+
+#     return render_template('add_attendance.html', form=form, students=students)
+
+
+# @main.route('/add_attendance', methods=['GET', 'POST'])
+# @login_required
+# def add_attendance():
+#     form = AttendanceForm()
+
+#     # Fetch students and their associated class names
+#     students = (
+#         db.session.query(
+#             Student.id,
+#             Student.first_name,
+#             Student.last_name,
+#             Class.class_name
+#         )
+#         .join(Class, Student.class_id == Class.id)
+#         .all()
+#     )
+
+#     # Ensure the dropdown has at least one default option
+#     form.student_id.choices = [(s.id, f"{s.first_name} {s.last_name}") for s in students] or [("", "No Students Available")]
+    
+#     if form.validate_on_submit():
+#         student_id = form.student_id.data
+#         class_id = form.class_id.data
+#         days_present = form.days_present.data
+#         total_days_opened = form.total_days_opened.data
+
+#         # Fetch the student's class automatically
+#         student = Student.query.get(student_id)
+#         if not student:
+#             flash("Invalid student selected.", "danger")
+#             return redirect(url_for('main.add_attendance'))
+
+#         class_id = student.class_id  # Auto-detect class
+
+#         # Check if an attendance record exists for this student
+#         attendance = Attendance.query.filter_by(student_id=student_id, class_id=class_id).first()
+
+#         if attendance:
+#             # Update attendance
+#             attendance.days_present = days_present
+#             attendance.total_days_opened = total_days_opened
+#         else:
+#             # Create a new attendance record
+#             attendance = Attendance(
+#                 student_id=student_id,
+#                 class_id=class_id,
+#                 days_present=days_present,
+#                 total_days_opened=total_days_opened
+#             )
+#             db.session.add(attendance)
+
+#         db.session.commit()
+#         flash('Attendance record updated successfully!', 'success')
+#         return redirect(url_for('main.attendance'))
+
+#     return render_template('add_attendance.html', form=form, students=students)
+
+
+# @main.route('/add_attendance', methods=['GET', 'POST'])
+# @login_required
+# def add_attendance():
+#     form = AttendanceForm()
+
+#     # Fetch students and their associated class names
+#     students = (
+#         db.session.query(
+#             Student.id,
+#             Student.first_name,
+#             Student.last_name,
+#             Class.class_name
+#         )
+#         .join(Class, Student.class_id == Class.id)
+#         .all()
+#     )
+
+#     # Ensure the dropdown has at least one default option
+#     if students:
+#         form.student_id.choices = [(s.id, f"{s.first_name} {s.last_name}") for s in students]
+#     else:
+#         form.student_id.choices = [("", "No Students Available")]
+
+#     if form.validate_on_submit():
+#         student_id = form.student_id.data
+#         class_id = form.class_id.data
+#         days_present = form.days_present.data
+#         total_days_opened = form.total_days_opened.data
+
+#         # Fetch the student's class automatically
+#         student = Student.query.get(student_id)
+#         if not student:
+#             flash("Invalid student selected.", "danger")
+#             return redirect(url_for('main.add_attendance'))
+
+#         class_id = student.class_id  # Auto-detect class
+
+#         # Check if an attendance record exists for this student
+#         attendance = Attendance.query.filter_by(student_id=student_id, class_id=class_id).first()
+
+#         if attendance:
+#             # Update attendance
+#             attendance.days_present = days_present
+#             attendance.total_days_opened = total_days_opened
+#         else:
+#             # Create a new attendance record
+#             attendance = Attendance(
+#                 student_id=student_id,
+#                 class_id=class_id,
+#                 days_present=days_present,
+#                 total_days_opened=total_days_opened
+#             )
+#             db.session.add(attendance)
+
+#         db.session.commit()
+#         flash('Attendance record updated successfully!', 'success')
+#         return redirect(url_for('main.attendance'))
+
+#     return render_template('add_attendance.html', form=form, students=students)
+
 @main.route('/add_attendance', methods=['GET', 'POST'])
 @login_required
 def add_attendance():
@@ -423,7 +487,7 @@ def add_attendance():
             Student.first_name,
             Student.last_name,
             Class.class_name,
-            Class.id.label('class_id')
+            Class.id.label('class_id')  # Fetch class_id for auto-detection
         )
         .join(Class, Student.class_id == Class.id)
         .all()
@@ -530,6 +594,16 @@ def add_student():
 
     return render_template('add_student.html', form=form)
 
+
+@main.route('/static/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(Config.UPLOAD_FOLDER, filename)
+
+# Teacher route
+# @main.route('/teachers')
+# def teachers():
+#     teachers = Teacher.query.all()
+#     return render_template('teachers.html', teachers=teachers)
 
 @main.route('/teachers', methods=['GET'])
 def teachers():
@@ -654,6 +728,8 @@ def edit_teacher(teacher_id):
     return render_template('edit_teacher.html', form=form, teacher=teacher)
 
 
+
+
 @main.route('/add_class', methods=['GET', 'POST'])
 @login_required
 def add_class():
@@ -700,6 +776,7 @@ def classes():
      .filter(Class.school_id == current_user.school_id) \
      .group_by(Class.id).options(joinedload('teachers')).all()
 
+    # The result is a list of tuples: (Class object, student_count)
     return render_template('classes.html', classes=classes)
 
 
@@ -737,6 +814,7 @@ def delete_class(class_id):
         flash(f'Error deleting class: {str(e)}', 'danger')
 
     return redirect(url_for('main.classes'))
+
 
 
 @main.route('/add_grade', methods=['GET', 'POST'])
@@ -780,6 +858,37 @@ def add_subject():
     return render_template('add_subject.html', form=form)
 
 
+
+# @main.route('/assign_subject_to_class', methods=['GET', 'POST'])
+# @login_required
+# def assign_subject_to_class():
+#     form = AssignSubjectToClassForm()
+
+#     # Populate the class dropdown
+#     form.class_id.choices = [
+#         (c.id, c.class_name)  # (value, label)
+#         for c in Class.query.filter_by(school_id=current_user.school_id).all()
+#     ]
+
+#     # Populate the subject dropdown
+#     form.subject_id.choices = [
+#         (s.id, s.name)  # (value, label)
+#         for s in Subject.query.filter_by(school_id=current_user.school_id).all()
+#     ]
+
+#     if form.validate_on_submit():
+#         # Create a new ClassSubject record
+#         class_subject = ClassSubject(
+#             class_id=form.class_id.data,
+#             subject_id=form.subject_id.data
+#         )
+#         db.session.add(class_subject)
+#         db.session.commit()
+#         flash('Subject assigned to class successfully!', 'success')
+#         return redirect(url_for('main.subjects'))
+
+#     return render_template('assign_subject_to_class.html', form=form)
+
 @main.route('/assign_subject_to_class', methods=['GET', 'POST'])
 @login_required
 def assign_subject_to_class():
@@ -796,7 +905,7 @@ def assign_subject_to_class():
 
     if form.validate_on_submit():
         class_id = form.class_id.data
-        selected_subjects = request.form.getlist('subjects')
+        selected_subjects = request.form.getlist('subjects')  # Get list of selected subject IDs
 
         # Assign each selected subject to the class
         for subject_id in selected_subjects:
@@ -811,6 +920,8 @@ def assign_subject_to_class():
         return redirect(url_for('main.subjects'))
 
     return render_template('assign_subject_to_class.html', form=form, subjects=subjects)
+
+from sqlalchemy.orm import aliased
 
 
 @main.route('/class_subjects')
@@ -879,6 +990,9 @@ def delete_class_subject(class_name):
     return redirect(url_for('main.view_class_subjects'))
 
 
+# Route to add attendance
+
+
 # Route to generate a report of all assessment scores
 @main.route('/generate_assessment_report/<int:assessment_id>')
 @login_required
@@ -930,6 +1044,8 @@ def add_assessment_type():
     return render_template('add_assessment_type.html', form=form)
 
 
+
+
 @main.route('/assessments')
 @login_required
 def assessments():
@@ -945,6 +1061,8 @@ def assessments():
         AssessmentType.name.label('assessment_type_name') 
     ).all()
     return render_template('assessments.html', assessments=all_assessments)
+
+
 
 
 @main.route('/add_assessment', methods=['GET', 'POST'])
@@ -1119,12 +1237,14 @@ def edit_assessment_subject_score(id):
     # Fetch the record to be edited
     score = AssessmentSubjectScore.query.get_or_404(id)
 
+    # If the form is submitted (POST request), update the score
     if request.method == 'POST':
         # Update the score's fields from the form data
         score.subject_id = request.form['subject_id']
         score.total_marks = request.form['total_marks']
 
         try:
+            # Commit the changes to the database
             db.session.commit()
             flash('Assessment Subject Score updated successfully!', 'success')
             return redirect(url_for('main.assessment_subject_scores'))
@@ -1143,83 +1263,14 @@ def edit_assessment_subject_score(id):
         assessments=assessments
     )
 
-from forms import AssessmentSubjectScoreForm
-
-# @main.route('/edit_assessment_subject_score/<int:id>', methods=['GET', 'POST'])
-# def edit_assessment_subject_score(id):
-#     score = AssessmentSubjectScore.query.get_or_404(id)
-#     form = AssessmentSubjectScoreForm(obj=score)  # Create a form (you'll need one)
-
-#     if form.validate_on_submit():
-#         # Update the score object with the form data
-#         form.populate_obj(score) # More efficient way to update the object
-#         try:
-#             db.session.commit()
-#             flash('Assessment score updated successfully!', 'success')
-#             return redirect(url_for('main.assessment_subject_scores'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f"Database error: {e}", "danger")
-#             print(f"Database error: {e}")
-#     return render_template('edit_assessment_subject_score.html', form=form, score=score) # Create a new template for editing
-
-
-# @main.route('/delete_assessment_subject_score/<int:id>', methods=['POST'])
-# def delete_assessment_subject_score(id):
-#     score = AssessmentSubjectScore.query.get_or_404(id)
-#     try:
-#         db.session.delete(score)
-#         db.session.commit()
-#         flash('Assessment score deleted successfully!', 'success')
-#     except Exception as e:
-#         db.session.rollback()
-#         flash(f"Database error: {e}", "danger")
-#         print(f"Database error: {e}")
-#     return redirect(url_for('main.assessment_subject_scores'))
-
-# @main.route('/delete_multiple_assessment_subject_scores', methods=['POST'])
-# def delete_multiple_assessment_subject_scores():
-#     try:
-#         delete_ids = request.form.getlist('delete_ids')  # Get list of checked IDs
-#         if delete_ids:  # Check if any IDs were selected
-#             for id in delete_ids:
-#                 score = AssessmentSubjectScore.query.get_or_404(id)
-#                 db.session.delete(score)
-#             db.session.commit()
-#             flash('Selected assessment scores deleted successfully!', 'success')
-#         else:
-#             flash('No assessment scores selected for deletion.', 'warning') # Flash a warning if no items are selected.
-
-#     except Exception as e:
-#         db.session.rollback()
-#         flash(f"Database error: {e}", "danger")
-#         print(f"Database error: {e}")
-
-#     return redirect(url_for('main.assessment_subject_scores'))
-
-# @main.route('/assessment_subject_scores/delete/<int:id>', methods=['POST'])
-# def delete_assessment_subject_score(id):
-#     # Fetch the record to be deleted
-#     score = AssessmentSubjectScore.query.get_or_404(id)
-
-#     try:
-#         # Delete the score from the database
-#         db.session.delete(score)
-#         db.session.commit()
-#         flash('Assessment Subject Score deleted successfully!', 'success')
-#     except Exception as e:
-#         db.session.rollback()
-#         flash(f'Error deleting score: {str(e)}', 'danger')
-
-#     return redirect(url_for('main.assessment_subject_scores', score=score))
-
 
 @main.route('/assessment_subject_scores/delete/<int:id>', methods=['POST'])
 def delete_assessment_subject_score(id):
+    # Fetch the record to be deleted
     score = AssessmentSubjectScore.query.get_or_404(id)
 
     try:
-        db.session.refresh(score)  # Refresh the object from the database
+        # Delete the score from the database
         db.session.delete(score)
         db.session.commit()
         flash('Assessment Subject Score deleted successfully!', 'success')
@@ -1228,30 +1279,6 @@ def delete_assessment_subject_score(id):
         flash(f'Error deleting score: {str(e)}', 'danger')
 
     return redirect(url_for('main.assessment_subject_scores'))
-
-
-@main.route('/assessment_subject_scores/delete', methods=['POST'])
-def delete_multiple_assessment_subject_scores():
-    selected_ids = request.form.getlist('delete_ids')
-    
-    if not selected_ids:
-        flash('No assessment scores selected for deletion.', 'warning')
-        return redirect(url_for('main.assessment_subject_scores'))
-    
-    try:
-        for score_id in selected_ids:
-            score = AssessmentSubjectScore.query.get(score_id)
-            if score:
-                db.session.delete(score)
-        
-        db.session.commit()
-        flash(f'Successfully deleted {len(selected_ids)} assessment score(s).', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting scores: {str(e)}', 'danger')
-    
-    return redirect(url_for('main.assessment_subject_scores'))
-
 
 
 # Route to view all subjects for a class
@@ -1288,206 +1315,207 @@ def add_class_subject(class_id):
 
 
 
-# # Grading function
-# def calculate_grade(total):
-#     if 70 <= total <= 100:
-#         return 'A', 'Excellent'
-#     elif 60 <= total < 70:
-#         return 'B', 'Very Good'
-#     elif 50 <= total < 60:
-#         return 'C', 'Good'
-#     elif 45 <= total < 50:
-#         return 'D', 'Pass'
-#     else:
-#         return 'E', 'Weak'
 
-
-# def create_student_result_pdf(student):
+# def generate_result_sheet(student):
 #     buffer = BytesIO()
 #     pdf = canvas.Canvas(buffer, pagesize=A4)
-#     width, height = A4
-#     styles = getSampleStyleSheet()
 
-
-#     # Title Section (with Logo and Colored School Name)
+#     # Title Section
 #     pdf.setFont("Helvetica-Bold", 14)
-
-#     # School Logo (Top Left)
-#     try:
-#         img = ImageReader(student['school_logo'])
-#         pdf.drawImage(img, 50, 750, width=75, height=75, preserveAspectRatio=True)
-#     except Exception as e:
-#         print(f"Error loading logo: {e}")
-#         pdf.drawString(50, 775, "School Logo")
-
-#     # School Name (Colored)
-#     school_name_color = colors.red
-#     pdf.setFillColor(school_name_color)
-#     pdf.drawCentredString(width/2, 800, student['school_name'])
-#     pdf.setFillColor(colors.black)
-
+#     pdf.drawCentredString(300, 800, "UNIVERSITY OF  CONSULTANCY SCHOOLS")
 #     pdf.setFont("Helvetica", 12)
-#     pdf.drawCentredString(width/2, 780, student['school_address'])
-#     pdf.drawCentredString(width/2, 760, "INDIVIDUAL STUDENT'S ASSESSMENT SHEET")
-#     pdf.drawCentredString(width/2, 740, "JUNIOR SECONDARY SCHOOL")
+#     pdf.drawCentredString(300, 780, "University of Benin, Ekehuan Road Campus, P.M.B. 1154, Benin City")
+#     pdf.drawCentredString(300, 760, "INDIVIDUAL STUDENT'S ASSESSMENT SHEET")
+#     pdf.drawCentredString(300, 740, "JUNIOR SECONDARY SCHOOL")
 
-#     student_details_data = [
-#         ["RESULT ID:", student['result_id'], "SEX:", student['sex'], "TERM:", student['term']],
-#         ["NAME OF STUDENT:", student['name'], "SESSION:", student['session'], "CLASS:", student['class_name']],
-#         [
-#         Paragraph("NO. OF TIMES<br/>PRESENT", styles['Normal']),
-#         student['times_present'],
-#         Paragraph("NO. OF TIMES<br/>SCHOOL OPENED", styles['Normal']),
-#         student['times_opened'], "POSITION:", student['class_name'],
-#         # "",
-#         # ""
-#     ],
-#     ]
+#     # Student Details
+#     pdf.setFont("Helvetica", 10)BENIN
+#     pdf.drawString(50, 710, f"RESULT ID: {student['result_id']}")
+#     pdf.drawString(250, 710, f"SEX: {student['sex']}")
+#     pdf.drawString(400, 710, f"TERM: {student['term']}")
+#     pdf.drawString(50, 690, f"NAME OF STUDENT: {student['name']}")
+#     pdf.drawString(250, 690, f"SESSION: {student['session']}")
+#     pdf.drawString(400, 690, f"NO. OF TIMES PRESENT: {student['times_present']}")
+#     pdf.drawString(50, 670, f"CLASS: {student['class_name']}")
+#     pdf.drawString(250, 670, f"NO. OF TIMES SCHOOL OPENED: {student['times_opened']}")
 
-#     # Calculate colWidths dynamically to ensure proper spacing
-#     col_widths = [120, 130, 60, 60, 80, 80]
+#     # Subject Table Headers
+#     pdf.setFont("Helvetica-Bold", 10)
+#     y_start = 650
+#     headers = ["SUBJECT", "CONTINUOUS ASSESSMENT", "TERM SUMMARY"]
+#     pdf.drawString(50, y_start, headers[0])
+#     pdf.drawString(200, y_start, headers[1])
+#     pdf.drawString(450, y_start, headers[2])
 
-#     student_details_table = Table(student_details_data, colWidths=col_widths)
-
-#     student_details_table.setStyle(TableStyle([
-#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-#         ('FONTSIZE', (0, 0), (-1, -1), 10),
-#         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-#         ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-#         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey), # Add header row background
-#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), # Bold header row
-#     ]))
-
-#     student_details_table.wrapOn(pdf, width, height)
-#     student_details_table.drawOn(pdf, 30, 630)
-
-#     # Subject Table with Section Headers
-#     subject_data = []
-#     grand_total = 0
-#     passes = 0
+#     # Table Data
+#     y = y_start - 20
+#     pdf.setFont("Helvetica", 9)
 
 #     for subject in student['subjects']:
-#         total_score = subject.get('CA1', 0) + subject.get('CA2', 0) + subject.get('EXAMINATION', 0)
-#         grade, remark = calculate_grade(total_score)
-#         grand_total += total_score
-#         if grade in ['A', 'B', 'C']:
-#             passes += 1
-#         subject_data.append([subject['name'], subject.get('CA1', 0), subject.get('CA2', 0), subject.get('EXAMINATION', 0), total_score, grade, remark])
+#         pdf.drawString(50, y, subject['name'])
+#         pdf.drawString(200, y, f"{subject['ca_scores']}")
+#         pdf.drawString(450, y, f"{subject['term_summary']}")
+#         y -= 20
+#         if y < 100:
+#             pdf.showPage()
+#             y = 750
 
-#     # overall_grade = calculate_grade(grand_total / len(subjects))
-#     overall_grade = calculate_grade(grand_total / len(student['subjects']))
-#     student['overall_grade'] = grade
+#     # Footer Section
+#     pdf.setFont("Helvetica-Bold", 10)
+#     pdf.drawString(50, 80, f"Term Grand Total: {student['grand_total']}")
+#     pdf.drawString(250, 80, f"Overall Grade: {student['overall_grade']}")
+#     pdf.drawString(400, 80, f"Next Term Begins: {student['next_term']}")
 
-#     # Restructured Header Data - Two Rows
-#     header_row_1 = [
-#         "SUBJECT",  # Subject is in its own column
-#         Paragraph("CONTINUOUS ASSESSMENT", getSampleStyleSheet()["h3"]),
-#         Spacer(1, 1),
-#         Spacer(1, 1),
-#         Spacer(1, 1),
-#         Paragraph("TERM SUMMARY", getSampleStyleSheet()["h3"]),
-#         Spacer(1, 1),
-
-#     ]
-#     header_row_2 = [  # Column headers
-#         "SUBJECT", "CA1", "CA2", "EXAMINATION", "TOTAL", "GRADE", "REMARK"
-#     ]
-
-#     full_subject_data = [header_row_1, header_row_2] + subject_data  # Combine headers and data
-
-#     # Corrected Table and Style
-#     row_heights = [20, 20] + [20] * len(subject_data)  # Adjust row heights as needed
-#     subject_table = Table(full_subject_data, colWidths=[150, 50, 50, 80, 50, 50, 100], rowHeights=row_heights)
-
-#     subject_table.setStyle(TableStyle([
-#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-#         ('FONTSIZE', (0, 0), (-1, -1), 10),
-#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#         ('ALIGN', (0, 0), (0, -1), 'LEFT'),  # Left align subject names
-#         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-#         ('BACKGROUND', (1, 2), (4, -1), colors.beige),  # background for CA columns (start from row 2)
-#         ('BACKGROUND', (5, 2), (6, -1), colors.beige),  # background for TS columns (start from row 2)
-#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Bold header row
-#         ('BACKGROUND', (1, 0), (4, 0), colors.lightgrey),  # Highlight CA header
-#         ('BACKGROUND', (5, 0), (6, 0), colors.lightgrey),  # Highlight TS header
-#         ('SPAN', (1, 0), (4, 0)),  # Span "CONTINUOUS ASSESSMENT"
-#         ('SPAN', (5, 0), (6, 0)),  # Span "TERM SUMMARY"
-#         ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey), # column header background
-#     ]))
-
-#     # subject_table.wrapOn(pdf, width, height)
-#     # subject_table.drawOn(pdf, 30, 430)
-
-#     # Calculate the height of the student details table
-#     student_details_table.wrapOn(pdf, width, height)
-#     student_details_table_height = student_details_table._height
-
-#     # Adjust the Y-position dynamically
-#     subject_table_y_position = 390 - student_details_table_height - 20  # 20 for padding
-
-#     # Now draw the subject table
-#     subject_table.wrapOn(pdf, width, height)
-#     subject_table.drawOn(pdf, 30, subject_table_y_position)
-
-
-#     term_average = grand_total / len(student['subjects']) if student['subjects'] else 0
-    
-
-#     # Summary Tables
-#     summary_data = [
-#         ["Term Grand Total:", str(grand_total)],
-#         ["Term Average:", f"{term_average:.2f}"],
-#         ["Number of Subject Passes:", str(passes)],
-#         ["Overall Grade:", student.get("overall_grade", "N/A")],
-#     ]
-
-#     grading_key_data = [
-#         ["Figures", "Grade", "Remark"],
-#         ["70 - 100", "A", "Excellent"],
-#         ["60 - 69", "B", "Very Good"],
-#         ["50 - 59", "C", "Good"],
-#         ["45 - 49", "D", "Pass"],
-#         ["0 - 44", "E", "Weak"],
-#     ]
-
-#     summary_table = Table(summary_data, colWidths=[150, 80])
-#     grading_key_table = Table(grading_key_data, colWidths=[80, 60, 80])
-
-#     summary_table.setStyle(TableStyle([
-#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-#         ('FONTSIZE', (0, 0), (-1, -1), 10),
-#         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-#         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-#     ]))
-
-#     grading_key_table.setStyle(TableStyle([
-#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-#         ('FONTSIZE', (0, 0), (-1, -1), 10),
-#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-#         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-#     ]))
-
-#     summary_table.wrapOn(pdf, width, height)
-#     summary_table.drawOn(pdf, 30, 180)
-
-#     grading_key_table.wrapOn(pdf, width, height)
-#     grading_key_table.drawOn(pdf, 300, 160)
-
-#     # Remarks Section
-#     pdf.setFont("Helvetica", 10)
-#     pdf.drawString(50, 120, "Class Teacher Remark: __________________________")
-#     pdf.drawString(50, 100, "Principal Remark: __________________________")
-
-#     # Principal's Signature
-#     pdf.setFont("Helvetica-Bold", 12)
-#     pdf.drawCentredString(width/2, 62, "____________________________")
-#     pdf.drawCentredString(width/2, 50, "PRINCIPAL'S SIGNATURE")
-
+#     # Save the PDF
 #     pdf.save()
 #     buffer.seek(0)
+
 #     return buffer
 
+
+
+# @main.route('/download_result/<int:student_id>')
+# def download_result(student_id):
+#     # Replace this with actual student data from your database
+#     student = {
+#         "result_id": "UCS2024/JSS1A/1564460",
+#         "name": "Maxwell Oduwa Amadasun",
+#         "sex": "Male",
+#         "term": "1st Term",
+#         "session": "2024/2025",
+#         "times_present": 112,
+#         "times_opened": 112,
+#         "class_name": "JSS 1A",
+#         "subjects": [
+#             {"name": "English Language", "ca_scores": "10, 20, 15", "term_summary": "GOOD"},
+#             {"name": "Mathematics", "ca_scores": "15, 18, 20", "term_summary": "EXCELLENT"},
+#             {"name": "Computer Science", "ca_scores": "5, 15, 10", "term_summary": "PASS"},
+#             # Add more subjects here...
+#         ],
+#         "grand_total": 929,
+#         "overall_grade": "C",
+#         "next_term": "2025-01-06"
+#     }
+
+#     pdf_buffer = generate_result_sheet(student)
+#     return send_file(
+#         pdf_buffer,
+#         as_attachment=True,
+#         download_name=f"{student['name']}_result.pdf",
+#         mimetype='application/pdf'
+#     )
+
+# def generate_result_sheet(student):
+#     buffer = BytesIO()
+#     pdf = canvas.Canvas(buffer, pagesize=A4)
+
+#     # Title Section
+#     pdf.setFont("Helvetica-Bold", 14)
+#     pdf.drawCentredString(300, 800, "UNIVERSITY OF BENIN CONSULTANCY SCHOOLS")
+#     pdf.setFont("Helvetica", 12)
+#     pdf.drawCentredString(300, 780, "University of Benin, Ekehuan Road Campus, P.M.B. 1154, Benin City")
+#     pdf.drawCentredString(300, 760, "INDIVIDUAL STUDENT'S ASSESSMENT SHEET")
+#     pdf.drawCentredString(300, 740, "JUNIOR SECONDARY SCHOOL")
+
+#     # Student Details
+#     pdf.setFont("Helvetica", 10)
+#     pdf.drawString(50, 710, f"RESULT ID: {student['result_id']}")
+#     pdf.drawString(250, 710, f"SEX: {student['sex']}")
+#     pdf.drawString(400, 710, f"TERM: {student['term']}")
+#     pdf.drawString(50, 690, f"NAME OF STUDENT: {student['name']}")
+#     pdf.drawString(250, 690, f"SESSION: {student['session']}")
+#     pdf.drawString(400, 690, f"NO. OF TIMES PRESENT: {student['times_present']}")
+#     pdf.drawString(50, 670, f"CLASS: {student['class_name']}")
+#     pdf.drawString(250, 670, f"NO. OF TIMES SCHOOL OPENED: {student['times_opened']}")
+
+#     # Subject Table Headers
+#     pdf.setFont("Helvetica-Bold", 10)
+#     y_start = 650
+#     headers = ["SUBJECT", "CONTINUOUS ASSESSMENT", "TERM SUMMARY"]
+#     pdf.drawString(50, y_start, headers[0])
+#     pdf.drawString(200, y_start, headers[1])
+#     pdf.drawString(450, y_start, headers[2])
+
+#     # Table Data
+#     y = y_start - 20
+#     pdf.setFont("Helvetica", 9)
+
+#     for subject in student['subjects']:
+#         pdf.drawString(50, y, subject['name'])
+#         pdf.drawString(200, y, f"{subject['ca_scores']}")
+#         pdf.drawString(450, y, f"{subject['term_summary']}")
+#         y -= 20
+#         if y < 100:
+#             pdf.showPage()
+#             y = 750
+
+#     # Footer Section
+#     pdf.setFont("Helvetica-Bold", 10)
+#     pdf.drawString(50, 80, f"Term Grand Total: {student['grand_total']}")
+#     pdf.drawString(250, 80, f"Overall Grade: {student['overall_grade']}")
+#     pdf.drawString(400, 80, f"Next Term Begins: {student['next_term']}")
+
+#     # Save the PDF
+#     pdf.save()
+#     buffer.seek(0)
+
+#     return buffer
+
+def generate_result_sheet(student):
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+
+    # Title Section
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawCentredString(300, 800, f"{student['school_name']}")  # Dynamic school name
+    pdf.setFont("Helvetica", 12)
+    pdf.drawCentredString(300, 780, f"{student['school_address']}")  # Dynamic school address
+    pdf.drawCentredString(300, 760, "INDIVIDUAL STUDENT'S ASSESSMENT SHEET")
+    pdf.drawCentredString(300, 740, "JUNIOR SECONDARY SCHOOL")
+
+    # Student Details
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(50, 710, f"RESULT ID: {student['result_id']}")
+    pdf.drawString(250, 710, f"SEX: {student['sex']}")
+    pdf.drawString(400, 710, f"TERM: {student['term']}")
+    pdf.drawString(50, 690, f"NAME OF STUDENT: {student['name']}")
+    pdf.drawString(250, 690, f"SESSION: {student['session']}")
+    pdf.drawString(400, 690, f"NO. OF TIMES PRESENT: {student['times_present']}")
+    pdf.drawString(50, 670, f"CLASS: {student['class_name']}")
+    pdf.drawString(250, 670, f"NO. OF TIMES SCHOOL OPENED: {student['times_opened']}")
+
+    # Subject Table Headers
+    pdf.setFont("Helvetica-Bold", 10)
+    y_start = 650
+    headers = ["SUBJECT", "CONTINUOUS ASSESSMENT", "TERM SUMMARY"]
+    pdf.drawString(50, y_start, headers[0])
+    pdf.drawString(200, y_start, headers[1])
+    pdf.drawString(450, y_start, headers[2])
+
+    # Table Data
+    y = y_start - 20
+    pdf.setFont("Helvetica", 9)
+
+    for subject in student['subjects']:
+        pdf.drawString(50, y, subject['name'])
+        pdf.drawString(200, y, f"{subject['ca_scores']}")
+        pdf.drawString(450, y, f"{subject['term_summary']}")
+        y -= 20
+        if y < 100:
+            pdf.showPage()
+            y = 750
+
+    # Footer Section
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, 80, f"Term Grand Total: {student['grand_total']}")
+    pdf.drawString(250, 80, f"Overall Grade: {student['overall_grade']}")
+    pdf.drawString(400, 80, f"Next Term Begins: {student['next_term']}")
+
+    # Save the PDF
+    pdf.save()
+    buffer.seek(0)
+
+    return buffer
 
 # @main.route('/download_result_sheet/<int:student_id>')
 # def download_result_sheet(student_id):
@@ -1497,42 +1525,14 @@ def add_class_subject(class_id):
 #         if not student_record:
 #             return jsonify({"error": "Student not found"}), 404
 
-#         # Fetch school details using the student's school_id
-#         school_record = School.query.filter_by(id=student_record.school_id).first()
-#         if not school_record:
-#             return jsonify({"error": "School not found"}), 404
-
 #         # Fetch student academic records
 #         subjects = AssessmentSubjectScore.query.filter_by(student_id=student_id).all()
 #         assessments = Assessment.query.filter_by(class_id=student_record.class_id).all()
 
 #         # Calculate attendance
 #         attendance_records = Attendance.query.filter_by(student_id=student_id).all()
-#         times_present = sum(1 for record in attendance_records if record.days_present == 'present')
+#         times_present = sum(1 for record in attendance_records if record.status == 'present')
 #         times_opened = len(attendance_records)
-
-
-#         # Organize CA scores by subject
-#         subject_scores = {}
-#         for subject_score in subjects:
-#             subject_name = subject_score.subject.name
-            
-#             if subject_name not in subject_scores:
-#                 subject_scores[subject_name] = {'CA1': 0, 'CA2': 0, 'EXAMINATION': 0}
-
-#             # Loop through assessments to match CA and Examination scores
-#             for assessment in assessments:
-#                 if assessment.id == subject_score.assessment_id:
-#                     if 'CA1' in assessment.name:
-#                         subject_scores[subject_name]['CA1'] = subject_score.total_marks
-#                     elif 'CA2' in assessment.name:
-#                         subject_scores[subject_name]['CA2'] = subject_score.total_marks
-#                     elif 'EXAMINATION' in assessment.name:
-#                         subject_scores[subject_name]['EXAMINATION'] = subject_score.total_marks
-        
-
-#         # Assign overall grade based on total score
-    
 
 #         # Prepare student data for the result sheet
 #         student = {
@@ -1546,24 +1546,19 @@ def add_class_subject(class_id):
 #             "class_name": student_record.class_.class_name,
 #             "subjects": [
 #                 {
-#                     "name": subject,
-#                     "CA1": scores['CA1'],
-#                     "CA2": scores['CA2'],
-#                     "EXAMINATION": scores['EXAMINATION']
+#                     "name": subject.subject.name,
+#                     "ca_scores": subject.total_marks,
+#                     "term_summary": subject.total_marks  # Assuming term summary is the total marks
 #                 }
-#                 for subject, scores in subject_scores.items()
+#                 for subject in subjects
 #             ],
-            
-#             "grand_total": sum(sum(scores.values()) for scores in subject_scores.values()),
-#             "overall_grade": "A",  # Placeholder, update based on grading logic
-#             "next_term": "2023-09-01",  # Placeholder
-#             "school_name": school_record.name,
-#             "school_address": school_record.address
+#             "grand_total": sum(subject.total_marks for subject in subjects),
+#             "overall_grade": "A",  # Placeholder, you can calculate this based on your grading system
+#             "next_term": "2023-09-01"  # Placeholder, you can fetch this from your database
 #         }
-
 
 #         # Generate the PDF
-#         pdf_buffer = create_student_result_pdf(student)
+#         pdf_buffer = generate_result_sheet(student)
 #         return send_file(
 #             pdf_buffer,
 #             as_attachment=True,
@@ -1572,315 +1567,30 @@ def add_class_subject(class_id):
 #         )
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
-
-
-
-from io import BytesIO
-from flask import send_file, jsonify
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.utils import ImageReader
-
-
-def calculate_grade(total_score):
-    if 70 <= total_score <= 100:
-        return 'A', 'Excellent'
-    elif 60 <= total_score < 70:
-        return 'B', 'Very Good'
-    elif 50 <= total_score < 60:
-        return 'C', 'Good'
-    elif 45 <= total_score < 50:
-        return 'D', 'Pass'
-    else:
-        return 'E', 'Weak'
-
-
-def create_student_result_pdf(student):
-    buffer = BytesIO()
-    pdf = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-    styles = getSampleStyleSheet()
-
-    # Title Section (with Logo and Colored School Name)
-    pdf.setFont("Helvetica-Bold", 14)
-
-    # School Logo (Top Left)
-    try:
-        logo_path = student.get("school_logo")  # Access from dictionary
-        if logo_path:
-            full_logo_path = os.path.join(Config.UPLOAD_FOLDER, logo_path)
-            if os.path.exists(full_logo_path):
-                img = ImageReader(full_logo_path)
-                pdf.drawImage(img, 50, 750, width=75, height=75, preserveAspectRatio=True)
-            else:
-                print(f"Logo file not found: {full_logo_path}")
-                pdf.drawString(50, 775, "School Logo Not Found")
-        else:
-            print("No logo path provided.")
-            pdf.drawString(50, 775, "No School Logo")
-    except Exception as e:
-        print(f"Error loading logo: {e}")
-        pdf.drawString(50, 775, "Error Loading Logo")
-
-    # School Name (Colored)
-    pdf.setFillColor(colors.red)
-    pdf.drawCentredString(width / 2, 800, student['school_name'])
-    pdf.setFillColor(colors.black)
-
-    pdf.setFont("Helvetica", 12)
-    pdf.drawCentredString(width / 2, 780, student['school_address'])
-    pdf.drawCentredString(width / 2, 760, "INDIVIDUAL STUDENT'S ASSESSMENT SHEET")
-    pdf.drawCentredString(width / 2, 740, "JUNIOR SECONDARY SCHOOL")
-
-    student_details_data = [
-        ["RESULT ID:", student['result_id'], "SEX:", student['sex'], "TERM:", student['term']],
-        ["NAME OF STUDENT:", student['name'], "SESSION:", student['session'], "CLASS:", student['class_name']],
-        [
-            Paragraph("NO. OF TIMES<br/>PRESENT", styles['Normal']),
-            student['times_present'],
-            Paragraph("NO. OF TIMES<br/>SCHOOL OPENED", styles['Normal']),
-            student['times_opened'], "POSITION:", student['class_name']
-        ],
-    ]
-
-    col_widths = [120, 130, 60, 60, 80, 80]
-    student_details_table = Table(student_details_data, colWidths=col_widths)
-
-    student_details_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-    ]))
-
-    student_details_table.wrapOn(pdf, width, height)
-    student_details_table.drawOn(pdf, 30, 630)
-
-    subject_data = []
-    grand_total = 0
-    passes = 0
-
-    for subject in student['subjects']:
-        total_score = subject.get('CA1', 0) + subject.get('CA2', 0) + subject.get('EXAMINATION', 0)
-        grade, remark = calculate_grade(total_score)
-        grand_total += total_score
-        if grade in ['A', 'B', 'C']:
-            passes += 1
-        subject_data.append([subject['name'], subject.get('CA1', 0), subject.get('CA2', 0), subject.get('EXAMINATION', 0), total_score, grade, remark])
-
-    overall_grade = calculate_grade(grand_total / len(student['subjects']))
-    student['overall_grade'] = overall_grade[0]
-
-    header_row_1 = [
-        "SUBJECT",
-        Paragraph("CONTINUOUS ASSESSMENT", styles["h3"]),
-        Spacer(1, 1), Spacer(1, 1), Spacer(1, 1),
-        Paragraph("TERM SUMMARY", styles["h3"]),
-        Spacer(1, 1),
-    ]
-
-    header_row_2 = ["SUBJECT", "CA1", "CA2", "EXAMINATION", "TOTAL", "GRADE", "REMARK"]
-    full_subject_data = [header_row_1, header_row_2] + subject_data
-
-    row_heights = [20, 20] + [20] * len(subject_data)
-    subject_table = Table(full_subject_data, colWidths=[150, 50, 50, 80, 50, 50, 100], rowHeights=row_heights)
-
-    subject_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BACKGROUND', (1, 2), (4, -1), colors.beige),
-        ('BACKGROUND', (5, 2), (6, -1), colors.beige),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BACKGROUND', (1, 0), (4, 0), colors.lightgrey),
-        ('BACKGROUND', (5, 0), (6, 0), colors.lightgrey),
-        ('SPAN', (1, 0), (4, 0)),
-        ('SPAN', (5, 0), (6, 0)),
-        ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),
-    ]))
-
-    student_details_table.wrapOn(pdf, width, height)
-    student_details_table_height = student_details_table._height
-    subject_table_y_position = 390 - student_details_table_height - 20
-
-    subject_table.wrapOn(pdf, width, height)
-    subject_table.drawOn(pdf, 30, subject_table_y_position)
-
-    term_average = grand_total / len(student['subjects']) if student['subjects'] else 0
-
-    summary_data = [
-        ["Term Grand Total:", str(grand_total)],
-        ["Term Average:", f"{term_average:.2f}"],
-        ["Number of Subject Passes:", str(passes)],
-        ["Overall Grade:", student.get("overall_grade", "N/A")],
-    ]
-
-    grading_key_data = [
-        ["Figures", "Grade", "Remark"],
-        ["70 - 100", "A", "Excellent"],
-        ["60 - 69", "B", "Very Good"],
-        ["50 - 59", "C", "Good"],
-        ["45 - 49", "D", "Pass"],
-        ["0 - 44", "E", "Weak"],
-    ]
-
-    summary_table = Table(summary_data, colWidths=[150, 80])
-    grading_key_table = Table(grading_key_data, colWidths=[80, 60, 80])
-
-    summary_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-    ]))
-
-    grading_key_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-    ]))
-
-    summary_table.wrapOn(pdf, width, height)
-    summary_table.drawOn(pdf, 30, 180)
-
-    grading_key_table.wrapOn(pdf, width, height)
-    grading_key_table.drawOn(pdf, 300, 160)
-
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(50, 120, "Class Teacher Remark: __________________________")
-    pdf.drawString(50, 100, "Principal Remark: __________________________")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawCentredString(width / 2, 62, "____________________________")
-    pdf.drawCentredString(width / 2, 50, "PRINCIPAL'S SIGNATURE")
-
-    pdf.save()
-    buffer.seek(0)
-    return buffer
-
-
-# @main.route('/download_result_sheet/<int:student_id>')
-# def download_result_sheet(student_id):
-#     try:
-#         student_record = Student.query.filter_by(id=student_id).first()
-#         if not student_record:
-#             return jsonify({"error": "Student not found"}), 404
-
-#         school_record = School.query.filter_by(id=student_record.school_id).first()
-#         if not school_record:
-#             return jsonify({"error": "School not found"}), 404
-
-#         subjects = AssessmentSubjectScore.query.filter_by(student_id=student_id).all()
-#         assessments = Assessment.query.filter_by(class_id=student_record.class_id).all()
-
-#         attendance_records = Attendance.query.filter_by(student_id=student_id).all()
-#         times_present = sum(1 for record in attendance_records if record.days_present == 'present')
-#         times_opened = len(attendance_records)
-
-#         subject_scores = {}
-#         for subject_score in subjects:
-#             subject_name = subject_score.subject.name
-#             if subject_name not in subject_scores:
-#                 subject_scores[subject_name] = {'CA1': 0, 'CA2': 0, 'EXAMINATION': 0}
-
-#             for assessment in assessments:
-#                 if assessment.id == subject_score.assessment_id:
-#                     if 'CA1' in assessment.name:
-#                         subject_scores[subject_name]['CA1'] = subject_score.total_marks
-#                     elif 'CA2' in assessment.name:
-#                         subject_scores[subject_name]['CA2'] = subject_score.total_marks
-#                     elif 'EXAMINATION' in assessment.name:
-#                         subject_scores[subject_name]['EXAMINATION'] = subject_score.total_marks
-
-#         student = {
-#             "result_id": student_record.id,
-#             "name": f"{student_record.first_name} {student_record.last_name}",
-#             "sex": student_record.gender,
-#             "term": assessments[0].term if assessments else "N/A",
-#             "session": assessments[0].academic_session if assessments else "N/A",
-#             "times_present": times_present,
-#             "times_opened": times_opened,
-#             "class_name": student_record.class_.class_name,
-#             "subjects": [
-#                 {
-#                     "name": subject,
-#                     "CA1": scores['CA1'],
-#                     "CA2": scores['CA2'],
-#                     "EXAMINATION": scores['EXAMINATION']
-#                 }
-#                 for subject, scores in subject_scores.items()
-#             ],
-#             "grand_total": sum(sum(scores.values()) for scores in subject_scores.values()),
-#             "overall_grade": "A",
-#             "next_term": "2023-09-01",
-#             "school_name": school_record.name,
-#             "school_address": school_record.address
-#         }
-
-#         pdf_buffer = create_student_result_pdf(student)
-#         return send_file(
-#             pdf_buffer,
-#             as_attachment=True,
-#             download_name=f"{student['name']}_result.pdf",
-#             mimetype='application/pdf'
-#         )
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
 
 @main.route('/download_result_sheet/<int:student_id>')
 def download_result_sheet(student_id):
     try:
+        # Fetch student personal details
         student_record = Student.query.filter_by(id=student_id).first()
         if not student_record:
             return jsonify({"error": "Student not found"}), 404
 
+        # Fetch school details using the student's school_id
         school_record = School.query.filter_by(id=student_record.school_id).first()
         if not school_record:
             return jsonify({"error": "School not found"}), 404
 
+        # Fetch student academic records
         subjects = AssessmentSubjectScore.query.filter_by(student_id=student_id).all()
-        print(f"Subjects for student {student_id}: {subjects}")  # Debug log
-
         assessments = Assessment.query.filter_by(class_id=student_record.class_id).all()
-        print(f"Assessments for class {student_record.class_id}: {assessments}")  # Debug log
 
+        # Calculate attendance
         attendance_records = Attendance.query.filter_by(student_id=student_id).all()
-        print(f"Attendance Records for student {student_id}: {attendance_records}")  # Debug log
-
         times_present = sum(1 for record in attendance_records if record.days_present == 'present')
         times_opened = len(attendance_records)
 
-        subject_scores = {}
-        for subject_score in subjects:
-            subject_name = subject_score.subject.name
-            if subject_name not in subject_scores:
-                subject_scores[subject_name] = {'CA1': 0, 'CA2': 0, 'EXAMINATION': 0}
-
-            for assessment in assessments:
-                if assessment.id == subject_score.assessment_id:
-                    print(f"Assessment Name: {assessment.name}, Marks: {subject_score.total_marks}")  # Debug log
-                    if 'CA1' in assessment.name:
-                        subject_scores[subject_name]['CA1'] = subject_score.total_marks
-                    elif 'CA2' in assessment.name:
-                        subject_scores[subject_name]['CA2'] = subject_score.total_marks
-                    elif 'EXAMINATION' in assessment.name:
-                        subject_scores[subject_name]['EXAMINATION'] = subject_score.total_marks
-
-        print(f"Subject Scores: {subject_scores}")  # Debug log
-
-        grand_total = sum(sum(scores.values()) for scores in subject_scores.values())
-        print(f"Grand Total: {grand_total}")  # Debug log
-
+        # Prepare student data for the result sheet
         student = {
             "result_id": student_record.id,
             "name": f"{student_record.first_name} {student_record.last_name}",
@@ -1892,22 +1602,21 @@ def download_result_sheet(student_id):
             "class_name": student_record.class_.class_name,
             "subjects": [
                 {
-                    "name": subject,
-                    "CA1": scores['CA1'],
-                    "CA2": scores['CA2'],
-                    "EXAMINATION": scores['EXAMINATION']
+                    "name": subject.subject.name,
+                    "ca_scores": subject.total_marks,
+                    "term_summary": subject.total_marks  # Assuming term summary is the total marks
                 }
-                for subject, scores in subject_scores.items()
+                for subject in subjects
             ],
-            "grand_total": grand_total,
-            "overall_grade": "A",
-            "next_term": "2023-09-01",
-            "school_name": school_record.name,
-            "school_address": school_record.address,
-            "school_logo": school_record.school_logo  # Add this line
+            "grand_total": sum(subject.total_marks for subject in subjects),
+            "overall_grade": "A",  # Placeholder, you can calculate this based on your grading system
+            "next_term": "2023-09-01",  # Placeholder, you can fetch this from your database
+            "school_name": school_record.name,  # Add school name
+            "school_address": school_record.address  # Add school address
         }
 
-        pdf_buffer = create_student_result_pdf(student)
+        # Generate the PDF
+        pdf_buffer = generate_result_sheet(student)
         return send_file(
             pdf_buffer,
             as_attachment=True,
@@ -1917,66 +1626,66 @@ def download_result_sheet(student_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# @main.route('/download_result/<int:student_id>')
-# def download_result(student_id):
-#     try:
-#         # Fetch student personal details
-#         student_record = Student.query.filter_by(id=student_id).first()
-#         if not student_record:
-#             return jsonify({"error": "Student not found"}), 404
+@main.route('/download_result/<int:student_id>')
+def download_result(student_id):
+    try:
+        # Fetch student personal details
+        student_record = Student.query.filter_by(id=student_id).first()
+        if not student_record:
+            return jsonify({"error": "Student not found"}), 404
 
-#         # Fetch student academic records
-#         subjects = AssessmentSubjectScore.query.filter_by(student_id=student_id).all()
-#         if not subjects:
-#             return jsonify({"error": "No subjects found for this student"}), 404
+        # Fetch student academic records
+        subjects = AssessmentSubjectScore.query.filter_by(student_id=student_id).all()
+        if not subjects:
+            return jsonify({"error": "No subjects found for this student"}), 404
 
-#         # Fetch assessment details (assuming one assessment for the student/session)
-#         assessment = Assessment.query.first()
-#         if not assessment:
-#             return jsonify({"error": "No assessment found for this student"}), 404
+        # Fetch assessment details (assuming one assessment for the student/session)
+        assessment = Assessment.query.first()
+        if not assessment:
+            return jsonify({"error": "No assessment found for this student"}), 404
 
-#         students_assessment = Assessment.query.filter_by(id=assessment.id).first()
-#         if not students_assessment:
-#             return jsonify({"error": "No assessment found for this student"}), 404
-#         else:
-#             # Your code here
-#             # ...
-#             pass
+        students_assessment = Assessment.query.filter_by(id=assessment.id).first()
+        if not students_assessment:
+            return jsonify({"error": "No assessment found for this student"}), 404
+        else:
+            # Your code here
+            # ...
+            pass
 
-#         classes = Class.query.first()
+        classes = Class.query.first()
 
-#         class_records = Class.query.filter_by(id=classes.id).first()
+        class_records = Class.query.filter_by(id=classes.id).first()
 
-#         student = {
-#             "result_id": student_record.id,  # Corrected here
-#             "name": f"{student_record.first_name} {student_record.last_name}",
-#             "sex": student_record.gender,
-#             "term": students_assessment.term,
-#             "session": students_assessment.academic_session,  # Corrected source of academic_session
-#             "class_name": class_records.class_name,
-#             "subjects": [
-#                 {
-#                     "name": subject.subject_id,
-#                     "ca_scores": ", ".join(map(str, [assessment.ca1, assessment.ca2, assessment.ca3])),
-#                     "term_summary": subject.term_summary
-#                 }
-#                 for subject in subjects
-#             ],
-#             "grand_total": sum(subject.total_score for subject in subjects),
-#             "overall_grade": student_record.overall_grade,
-#             "next_term": student_record.next_term
-#         }
+        student = {
+            "result_id": student_record.id,  # Corrected here
+            "name": f"{student_record.first_name} {student_record.last_name}",
+            "sex": student_record.gender,
+            "term": students_assessment.term,
+            "session": students_assessment.academic_session,  # Corrected source of academic_session
+            "class_name": class_records.class_name,
+            "subjects": [
+                {
+                    "name": subject.subject_id,
+                    "ca_scores": ", ".join(map(str, [assessment.ca1, assessment.ca2, assessment.ca3])),
+                    "term_summary": subject.term_summary
+                }
+                for subject in subjects
+            ],
+            "grand_total": sum(subject.total_score for subject in subjects),
+            "overall_grade": student_record.overall_grade,
+            "next_term": student_record.next_term
+        }
 
-#         # Generate the PDF
-#         pdf_buffer = create_student_result_pdf(student)
-#         return send_file(
-#             pdf_buffer,
-#             as_attachment=True,
-#             download_name=f"{student['name']}_result.pdf",
-#             mimetype='application/pdf'
-#         )
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+        # Generate the PDF
+        pdf_buffer = generate_result_sheet(student)
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=f"{student['name']}_result.pdf",
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 

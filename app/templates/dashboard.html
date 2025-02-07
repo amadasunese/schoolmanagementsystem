@@ -1,11 +1,98 @@
 {% extends "base.html" %}
+
 {% block content %}
-<h2>Admin Dashboard</h2>
-<p>Name of School: {{ school_name }}</p>
-<p>Total Students: {{ student_count }}</p>
-<p>Total Teachers: {{ teacher_count }}</p>
-<p>Total Classes: {{ class_count }}</p>
-<a href="{{ url_for('main.students') }}">Manage Students</a>
-<a href="{{ url_for('main.generate_report', report_type='excel') }}">Export to Excel</a>
-<a href="{{ url_for('main.generate_report', report_type='word') }}">Export to Word</a>
+<div class="container mt-4">
+    <h2 class="mb-4">Admin Dashboard</h2>
+
+    <!-- School Information Section -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">School Name</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ school_name }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Total Students</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ student_count }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-header">Total Teachers</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ teacher_count }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Cards -->
+    <div class="row">
+        <!-- Students & Teachers Section -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">Students & Teachers</div>
+                <div class="card-body">
+                    <a href="{{ url_for('main.classes') }}" class="btn btn-outline-primary btn-block">Manage Classes</a>
+                    <a href="{{ url_for('main.students') }}" class="btn btn-outline-primary btn-block">Manage Students</a>
+                    <a href="{{ url_for('main.teachers') }}" class="btn btn-outline-primary btn-block">Manage Teachers</a>
+                    <a href="{{ url_for('main.assign_teachers') }}" class="btn btn-outline-primary btn-block">Assign Teachers</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subjects & Assessments Section -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning">Subjects & Assessments</div>
+                <div class="card-body">
+                    <a href="{{ url_for('main.subjects') }}" class="btn btn-outline-warning btn-block">Manage Subjects</a>
+                    <a href="{{ url_for('main.add_subject') }}" class="btn btn-outline-warning btn-block">Add Subject</a>
+                    <a href="{{ url_for('main.assessments') }}" class="btn btn-outline-warning btn-block">View Assessments</a>
+                    <a href="{{ url_for('main.add_assessment_score') }}" class="btn btn-outline-warning btn-block">Add Assessment Score</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fees Management Section -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">Fees Management</div>
+                <div class="card-body">
+                    <a href="{{ url_for('main.fee_components') }}" class="btn btn-outline-danger btn-block">Fee Components</a>
+                    <a href="{{ url_for('main.student_fees') }}" class="btn btn-outline-danger btn-block">Student Fees</a>
+                    <a href="{{ url_for('main.record_payment') }}" class="btn btn-outline-danger btn-block">Record Payment</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export & School Registration -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">Reports</div>
+                <div class="card-body">
+                    <a href="{{ url_for('main.generate_report', report_type='excel') }}" class="btn btn-outline-secondary btn-block">Export to Excel</a>
+                    <a href="{{ url_for('main.generate_report', report_type='word') }}" class="btn btn-outline-secondary btn-block">Export to Word</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">School Registration</div>
+                <div class="card-body">
+                    <a href="{{ url_for('main.register_school') }}" class="btn btn-outline-info btn-block">Register School</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

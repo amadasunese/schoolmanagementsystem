@@ -1,14 +1,8 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField, SelectField, DateField, SubmitField, FloatField, PasswordField, BooleanField, SelectMultipleField
-from wtforms.validators import DataRequired, Length, NumberRange, Email
+from wtforms.validators import DataRequired, Length, NumberRange, Email, ValidationError
 from flask_wtf.file import FileField, FileAllowed
-
-# class UserForm(FlaskForm):
-#     username = StringField('Username', validators=[DataRequired(), Length(max=50)])
-#     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
-#     is_admin = BooleanField('Admin')
-#     school_id = SelectField('School', coerce=int, validators=[DataRequired()])
-#     submit = SubmitField('Register User')
+from models import Class, School, Teacher
 
 class UserForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
@@ -27,8 +21,6 @@ class SchoolForm(FlaskForm):
     submit = SubmitField('Register School')
 
 
-from app.models import Class, School
-
 class StudentForm(FlaskForm):
     first_name = StringField('First Name', validators=[DataRequired(), Length(max=50)])
     last_name = StringField('Last Name', validators=[DataRequired(), Length(max=50)])
@@ -38,7 +30,7 @@ class StudentForm(FlaskForm):
     grade_level = StringField('Grade Level', validators=[DataRequired(), Length(max=20)])
     contact_email = StringField('Contact Email', validators=[DataRequired(), Email(), Length(max=100)])
     school_id = SelectField('School', coerce=int, validators=[DataRequired()])
-    class_id = SelectField('Class', coerce=int, validators=[DataRequired()])  # Adjusted to be dynamic
+    class_id = SelectField('Class', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Add Student')
 
     def __init__(self, *args, **kwargs):
@@ -46,11 +38,11 @@ class StudentForm(FlaskForm):
         # Populate the choices dynamically
         self.class_id.choices = [(cls.id, cls.class_name) for cls in Class.query.all()]
         if not self.class_id.choices:
-            self.class_id.choices = [(-1, 'No classes available')]  # Default placeholder
+            self.class_id.choices = [(-1, 'No classes available')]
 
         self.school_id.choices = [(sch.id, sch.name) for sch in School.query.all()]
         if not self.school_id.choices:
-            self.school_id.choices = [(-1, 'No schools available')]  # Default placeholder
+            self.school_id.choices = [(-1, 'No schools available')]
 
 
 class TeacherForm(FlaskForm):
@@ -63,18 +55,18 @@ class TeacherForm(FlaskForm):
     address = StringField('Address', validators=[Length(max=255)])
     date_of_birth = DateField('Date of Birth', format='%Y-%m-%d')
     gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], validators=[DataRequired()])
-    photo = FileField('Photo', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')])  # Allow only images
-    subject = SelectMultipleField('Subjects', coerce=int, validators=[DataRequired()])  # Multi-select
+    photo = FileField('Photo', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')])
+    subject = SelectMultipleField('Subjects', coerce=int, validators=[DataRequired()])
     school_id = SelectField('School', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Add Teacher')
 
 
 class ClassForm(FlaskForm):
-    class_name = StringField('Class Name', validators=[DataRequired(), Length(max=100)])  # Matches VARCHAR(100)
-    teacher_id = IntegerField('Teacher ID', validators=[DataRequired(), NumberRange(min=1)])  # Matches INTEGER
-    schedule = StringField('Schedule', validators=[DataRequired(), Length(max=50)])  # Matches VARCHAR(50)
-    start_date = DateField('Start Date', format='%Y-%m-%d', validators=[DataRequired()])  # Matches DATE
-    end_date = DateField('End Date', format='%Y-%m-%d', validators=[DataRequired()])  # Matches DATE
+    class_name = StringField('Class Name', validators=[DataRequired(), Length(max=100)])
+    teacher_id = IntegerField('Teacher ID', validators=[DataRequired(), NumberRange(min=1)])
+    schedule = StringField('Schedule', validators=[DataRequired(), Length(max=50)])
+    start_date = DateField('Start Date', format='%Y-%m-%d', validators=[DataRequired()])
+    end_date = DateField('End Date', format='%Y-%m-%d', validators=[DataRequired()])
     submit = SubmitField('Save')
 
 class GradeForm(FlaskForm):
@@ -82,22 +74,6 @@ class GradeForm(FlaskForm):
     class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
     grade = IntegerField('Grade', validators=[DataRequired(), NumberRange(min=0, max=100)])
     submit = SubmitField('Save')
-
-# class AttendanceForm(FlaskForm):
-#     student_id = IntegerField('Student ID', validators=[DataRequired(), NumberRange(min=1)])
-#     class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
-#     attendance_date = DateField('Attendance Date', validators=[DataRequired()])
-#     status = SelectField('Status', choices=[('Present', 'Present'), ('Absent', 'Absent')], validators=[DataRequired()])
-#     submit = SubmitField('Save')
-
-
-
-# class AttendanceForm(FlaskForm):
-#     student_id = IntegerField('Student ID', validators=[DataRequired(), NumberRange(min=1)])
-#     class_id = IntegerField('Class ID', validators=[DataRequired(), NumberRange(min=1)])
-#     days_present = IntegerField('Days Present', validators=[DataRequired(), NumberRange(min=0)])
-#     total_days_opened = IntegerField('Total Days Opened', validators=[DataRequired(), NumberRange(min=1)])
-#     submit = SubmitField('Save')
 
 class AttendanceForm(FlaskForm):
     student_id = SelectField('Student', coerce=int, validators=[DataRequired()])
@@ -107,7 +83,7 @@ class AttendanceForm(FlaskForm):
     submit = SubmitField('Save')
 
 class AttendanceForm(FlaskForm):
-    student_id = SelectField('Student', coerce=int, validators=[DataRequired()])  # Ensure choices are set dynamically
+    student_id = SelectField('Student', coerce=int, validators=[DataRequired()])
     days_present = IntegerField('Days Present', validators=[DataRequired(), NumberRange(min=0)])
     total_days_opened = IntegerField('Total School Days', validators=[DataRequired(), NumberRange(min=1)])
     submit = SubmitField('Save')
@@ -138,28 +114,20 @@ class SubjectForm(FlaskForm):
     submit = SubmitField('Save Subject')
 
 
-from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, IntegerField, SubmitField
-from wtforms.validators import DataRequired, Length, ValidationError
-from app.models import Teacher
-
 def validate_teacher_id(form, field):
     if field.data and not Teacher.query.get(field.data):
         raise ValidationError('Invalid Teacher ID.')
 
-
 class ClassForm(FlaskForm):
     class_name = StringField('Class Name', validators=[DataRequired()])
     class_level = StringField('Class Level', validators=[DataRequired()])
-    # class_category = StringField('Class Category', validators=[DataRequired()])
     class_category = SelectField(
         'Class Category',
         choices=[('Nursery', 'Nursery'), ('Primary', 'Primary'), 
                  ('Junior Secondary', 'Junior Secondary'), ('Senior Secondary', 'Senior Secondary')],
         validators=[DataRequired()]
     )
-    # teacher_ids = SelectMultipleField('Assign Teachers', coerce=int, validators=[DataRequired()])
-    teacher_ids = SelectMultipleField('Teachers', coerce=int)  # For selecting multiple teachers
+    teacher_ids = SelectMultipleField('Teachers', coerce=int)
     submit = SubmitField('Add Class')
 
 
@@ -169,14 +137,28 @@ class AssignTeachersForm(FlaskForm):
     submit = SubmitField('Assign Teachers')
 
 
-
 class AssignSubjectToClassForm(FlaskForm):
     # Dropdown for selecting a class
     class_id = SelectField(
-        'Class',  # Label for the dropdown
-        coerce=int,  # Ensure the selected value is an integer
-        validators=[DataRequired()]  # Ensure a class is selected
+        'Class',
+        coerce=int,
+        validators=[DataRequired()]
     )
 
     # Submit button
     submit = SubmitField('Assign Subject to Class')
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+
+class AssessmentSubjectScoreForm(FlaskForm):
+    subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])
+    assessment_id = SelectField('Assessment', coerce=int, validators=[DataRequired()])
+    student_id = SelectField('Student', coerce=int, validators=[DataRequired()])
+    total_marks = StringField('Total Marks', validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+   

@@ -24,7 +24,8 @@
                 <td>{{ school.phone_number }}</td>
                 <td>{{ school.website }}</td>
                 <td>
-                    {% if school.school_logo %}  <img src="{{ url_for('main.uploaded_file', filename=school_logo) }}"> alt="School Logo" width="50">  {% else %}
+                    {% if school.school_logo %}  <img src="{{ url_for('main.uploaded_file', filename=school.school_logo) }}" alt="School Logo" width="50">
+                    {% else %}
                         No Logo
                     {% endif %}
                 </td>

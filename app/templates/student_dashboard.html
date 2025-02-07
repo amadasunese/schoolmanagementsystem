@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="dashboard-container">
+        <h1>Student Dashboard</h1>
+
+        <!-- Student Information Section -->
+        <div class="student-info">
+            <h2>Student Information</h2>
+            
+            <table class="info-table">
+                <tr>
+                    <th>Name</th>
+                    <td>{{ student.name }}</td>
+                </tr>
+                <tr>
+                    <th>Student ID</th>
+                    <td>{{ student.id }}</td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td>{{ student.email }}</td>
+                </tr>
+                <tr>
+                    <th>Phone Number</th>
+                    <td>{{ student.phone_number }}</td>
+                </tr>
+                <tr>
+                    <th>Address</th>
+                    <td>{{ student.address }}</td>
+                </tr>
+                <tr>
+                    <th>Date of Birth</th>
+                    <td>{{ student.date_of_birth }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Enrolled Classes Section -->
+        <div class="enrolled-classes">
+            <h2>Enrolled Classes</h2>
+            <table class="classes-table">
+                <thead>
+                    <tr>
+                        <th>Class Name</th>
+                        <th>Teacher</th>
+                        <th>Schedule</th>
+                        <th>Room</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for class in student.classes %}
+                    <tr>
+                        <td>{{ class.name }}</td>
+                        <td>{{ class.teacher.name }}</td>
+                        <td>{{ class.schedule }}</td>
+                        <td>{{ class.room }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grades Section -->
+        <div class="grades">
+            <h2>Grades</h2>
+            <table class="grades-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Grade</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for grade in student.grades %}
+                    <tr>
+                        <td>{{ grade.subject.name }}</td>
+                        <td>{{ grade.grade }}</td>
+                        <td>{{ grade.remarks }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -1,8 +1,7 @@
 
-from . import db
+from extensions import db, login_manager
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
-from . import login_manager
 from datetime import date
 from enum import Enum
 
@@ -190,7 +189,7 @@ class Assessment(db.Model):
 
     # Relationships
     assessment_type = db.relationship('AssessmentType', backref='assessments', lazy=True)
-    subject_scores = db.relationship('AssessmentSubjectScore', backref='assessmentsubjectscores', lazy=True)  # Updated backref
+    subject_scores = db.relationship('AssessmentSubjectScore', backref='assessmentsubjectscores', lazy=True)
 
 
 class AssessmentSubjectScore(db.Model):
@@ -205,7 +204,7 @@ class AssessmentSubjectScore(db.Model):
     # Relationships with unique backref names
     assessment = db.relationship('Assessment', backref=db.backref('assessment_subject_scores', lazy=True)) 
     subject = db.relationship('Subject', backref=db.backref('subject_ref', lazy=True)) 
-    student = db.relationship('Student', backref=db.backref('student_assessments', lazy=True))  # Unique backref
+    student = db.relationship('Student', backref=db.backref('student_assessments', lazy=True))
 
 
 
@@ -225,21 +224,13 @@ class Grade(db.Model):
     grade = db.Column(db.String(5), nullable=False)
 
 
-# class Attendance(db.Model):
-#     __tablename__ = 'attendance'
-#     id = db.Column(db.Integer, primary_key=True)
-#     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
-#     attendance_date = db.Column(db.Date, nullable=False)
-#     status = db.Column(db.String(10), nullable=False)
-
 class Attendance(db.Model):
     __tablename__ = 'attendance'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
-    days_present = db.Column(db.Integer, nullable=False, default=0)  # Tracks days student was present
-    total_days_opened = db.Column(db.Integer, nullable=False, default=0)  # Tracks total school days
+    days_present = db.Column(db.Integer, nullable=False, default=0)
+    total_days_opened = db.Column(db.Integer, nullable=False, default=0)
 
 
 class TeacherSubject(db.Model):
@@ -262,9 +253,9 @@ class StudentFee(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)  # Amount charged for the component
-    academic_year = db.Column(db.String(10), nullable=False)  # e.g., 2023/2024
-    term = db.Column(db.String(20), nullable=False)  # e.g., First Term, Second Term
+    amount = db.Column(db.Float, nullable=False)
+    academic_year = db.Column(db.String(10), nullable=False)
+    term = db.Column(db.String(20), nullable=False)
     payment_status = db.Column(db.Enum('paid', 'unpaid', name='payment_status'), default='unpaid', nullable=False)
 
     # Relationships
@@ -275,11 +266,11 @@ class FeePayment(db.Model):
     __tablename__ = 'fee_payments'
     id = db.Column(db.Integer, primary_key=True)
     student_fee_id = db.Column(db.Integer, db.ForeignKey('student_fees.id'), nullable=False)
-    amount_paid = db.Column(db.Float, nullable=False)  # Amount paid for the fee component
-    payment_date = db.Column(db.Date, nullable=False)  # Date of payment
-    payment_method = db.Column(db.String(50), nullable=False)  # e.g., Cash, Bank Transfer
-    receipt_number = db.Column(db.String(50), nullable=True)  # Optional receipt number
-    notes = db.Column(db.Text, nullable=True)  # Optional notes about the payment
+    amount_paid = db.Column(db.Float, nullable=False)
+    payment_date = db.Column(db.Date, nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
+    receipt_number = db.Column(db.String(50), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
 
     # Relationships
     student_fee = db.relationship('StudentFee', backref='fee_payments')
@@ -287,8 +278,8 @@ class FeePayment(db.Model):
 class FeeComponent(db.Model):
     __tablename__ = 'fee_components'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)  # e.g., Tuition Fee, PTA Levy
-    description = db.Column(db.Text, nullable=True)   # Optional description of the component
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
 
     # Relationships
@@ -300,7 +291,7 @@ class ClassFeeComponent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
     component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)  # Amount for this component in the class
+    amount = db.Column(db.Float, nullable=False)
 
     # Relationships
     class__ = db.relationship('Class', backref='class_fee_components_assoc')
