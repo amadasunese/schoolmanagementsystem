@@ -2534,7 +2534,7 @@ def add_fee_component():
 #     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
 #     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
 
-@main.route('/add_fee_component_to_class', methods=['POST']) # This route will handle the POST request
+@main.route('/add_fee_component_to_class', methods=['GET', 'POST']) # This route will handle the POST request
 @login_required
 def add_fee_component_to_class():
     if request.method == 'POST':
@@ -2542,6 +2542,9 @@ def add_fee_component_to_class():
         selected_components = request.form.getlist('selected_components')
         academic_year = request.form['academic_year']
         term = request.form['term']
+
+
+        # make it possible for selection of academic year
 
         for class_id in selected_classes:
             for component_id in selected_components:
@@ -2592,10 +2595,15 @@ def add_fee_component_to_class():
         flash('Selected fee components added to the selected classes successfully!', 'success')
         return redirect(url_for('main.generate_fees'))
 
+    academic_years = [
+        year.academic_year
+        for year in db.session.query(FeeComponent.academic_year).filter_by(school_id=current_user.school_id).distinct().all()
+    ]
+
     # Fetch all classes and fee components for the form
     classes = Class.query.filter_by(school_id=current_user.school_id).all()
     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
-    return render_template('add_fee_component_to_class.html', classes=classes, components=components)
+    return render_template('add_fee_component_to_class.html', classes=classes, components=components, academic_years=academic_years)
 
 
 
@@ -2684,13 +2692,18 @@ def view_class_fees():
             flash("Invalid class selection.", "danger")
             return redirect(url_for('main.view_fees'))
 
+    academic_years = [
+        year.academic_year
+        for year in db.session.query(FeeComponent.academic_year).filter_by(school_id=current_user.school_id).distinct().all()
+    ]
     return render_template('view_fees.html',
                            classes=classes,
                            fees=fees,
                            selected_class=selected_class,
                            selected_class_id=class_id,
                            selected_academic_year=academic_year,
-                           selected_term=term)
+                           selected_term=term,
+                           academic_years=academic_years)
 
 
 # @main.route('/generate_class_fees_pdf', methods=['GET'])
@@ -2879,13 +2892,42 @@ def generate_class_fees_pdf():
         flash(f"An error occurred while generating the PDF: {e}", "danger")  # Flash the error
         return redirect(url_for('main.generate_class_fees'))  # Redirect back to the form
     
-@main.route('/generate_fees', methods=['GET']) # Changed to GET to render a template for selecting class, academic year and term
+# @main.route('/generate_fees', methods=['GET']) # Changed to GET to render a template for selecting class, academic year and term
+# @login_required
+# def generate_fees():
+#     schools = School.query.filter_by(id=current_user.school_id).all()
+#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
+
+#     # Fetch academic years from the database (replace AcademicYear with your model name)
+#     academic_years = [year.academic_year for year in FeeComponent.query.distinct(FeeComponent.academic_year).all()]
+
+#     return render_template('generate_fees.html', schools=schools, classes=classes, academic_years=academic_years) # Pass schools and classes to the template
+
+
+@main.route('/generate_fees', methods=['GET'])
 @login_required
 def generate_fees():
-    schools = School.query.filter_by(id=current_user.school_id).all()
-    classes = Class.query.filter_by(school_id=current_user.school_id).all()
-    return render_template('generate_fees.html', schools=schools, classes=classes) # Pass schools and classes to the template
+    school = School.query.filter_by(id=current_user.school_id).first()
 
+    if not school:
+        flash("No school assigned to your account.", "danger")
+        return redirect(url_for('main.index'))
+
+    classes = Class.query.filter_by(school_id=school.id).all()
+
+    # Fetch distinct academic years from ClassFeeComponent, filtered by school
+    academic_years = [
+        year.academic_year
+        for year in db.session.query(FeeComponent.academic_year).filter_by(school_id=current_user.school_id).distinct().all()
+    ]
+
+    return render_template(
+        'generate_fees.html',
+        school=school,
+        classes=classes,
+        academic_years=academic_years
+    )
+    
 
 @main.route('/generate_class_fees', methods=['GET'])
 @login_required
