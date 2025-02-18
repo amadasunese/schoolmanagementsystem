@@ -62,7 +62,7 @@ class Student(db.Model):
     # Relationships
     grades = db.relationship('Grade', backref='student', lazy=True, cascade="all, delete-orphan")
     attendance = db.relationship('Attendance', backref='student', lazy=True, cascade="all, delete-orphan")
-    student_fees = db.relationship('StudentFee', backref='student', lazy=True, cascade="all, delete-orphan")
+    # student_fees = db.relationship('StudentFee', backref='student', lazy=True, cascade="all, delete-orphan")
     student_assessments = db.relationship('AssessmentSubjectScore', backref='student', lazy=True, cascade="all, delete-orphan")
 
 class_teacher_association = db.Table(
@@ -101,26 +101,6 @@ class Teacher(db.Model):
             )
         return None
 
-class Class(db.Model):
-    __tablename__ = 'classes'
-    id = db.Column(db.Integer, primary_key=True)
-    class_name = db.Column(db.String(100), nullable=False)
-    class_level = db.Column(db.String(50), nullable=False)
-    class_category = db.Column(db.String(50), nullable=False)
-    school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_classes_school_id'), nullable=False)
-
-    students = db.relationship('Student', backref='class_', lazy=True, cascade="all, delete-orphan")
-    teachers = db.relationship('Teacher', secondary=class_teacher_association, backref='classes', cascade="all, delete-orphan", single_parent=True)
-    fee_components = db.relationship('ClassFeeComponent', backref='class_assoc', lazy=True, cascade="all, delete-orphan")
-    class_fee_components_assoc = db.relationship('ClassFeeComponent', backref='class_', lazy=True, cascade="all, delete-orphan")
-
-    __table_args__ = (
-        db.UniqueConstraint('class_name', 'school_id', name='uq_class_per_school'),
-    )
-
-    @property
-    def teacher_names(self):
-        return ', '.join([f"{teacher.first_name} {teacher.last_name}" for teacher in self.teachers])
 
 class Subject(db.Model):
     __tablename__ = 'subjects'
@@ -210,28 +190,89 @@ class TeacherSubject(db.Model):
     def __repr__(self):
         return f"<TeacherSubject teacher_id={self.teacher_id}, subject_id={self.subject_id}>"
 
-class StudentFee(db.Model):
-    __tablename__ = 'student_fees'
+# class StudentFee(db.Model):
+#     __tablename__ = 'student_fees'
+#     id = db.Column(db.Integer, primary_key=True)
+#     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+#     component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
+#     amount = db.Column(db.Float, nullable=False)
+#     academic_year = db.Column(db.String(10), nullable=False)
+#     term = db.Column(db.String(20), nullable=False)
+#     payment_status = db.Column(db.Enum('paid', 'unpaid', name='payment_status'), default='unpaid', nullable=False)
+
+#     # Relationships
+#     fee_payments = db.relationship('FeePayment', backref='student_fee', lazy=True, cascade="all, delete-orphan")
+
+
+
+# class FeePayment(db.Model):
+#     __tablename__ = 'fee_payments'
+#     id = db.Column(db.Integer, primary_key=True)
+#     student_fee_id = db.Column(db.Integer, db.ForeignKey('student_fees.id'), nullable=False)
+#     amount_paid = db.Column(db.Float, nullable=False)
+#     payment_date = db.Column(db.Date, nullable=False)
+#     payment_method = db.Column(db.String(50), nullable=False)
+#     receipt_number = db.Column(db.String(50), nullable=True)
+#     notes = db.Column(db.Text, nullable=True)
+
+# class FeeComponent(db.Model):
+#     __tablename__ = 'fee_components'
+#     id = db.Column(db.Integer, primary_key=True)
+#     name = db.Column(db.String(100), nullable=False)
+#     description = db.Column(db.Text, nullable=True)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+
+#     # Relationships
+#     class_fee_components_assoc = db.relationship('ClassFeeComponent', backref='fee_component', lazy=True, cascade="all, delete-orphan")
+
+# class ClassFeeComponent(db.Model):
+#     __tablename__ = 'class_fee_components'
+#     id = db.Column(db.Integer, primary_key=True)
+#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
+#     component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
+#     amount = db.Column(db.Float, nullable=False)
+
+class Class(db.Model):
+    __tablename__ = 'classes'
+    id = db.Column(db.Integer, primary_key=True)
+    class_name = db.Column(db.String(100), nullable=False)
+    class_level = db.Column(db.String(50), nullable=False)
+    class_category = db.Column(db.String(50), nullable=False)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_classes_school_id'), nullable=False)
+
+    students = db.relationship('Student', backref='class_', lazy=True, cascade="all, delete-orphan")
+    teachers = db.relationship('Teacher', secondary=class_teacher_association, backref='classes', cascade="all, delete-orphan", single_parent=True)
+
+    # Keep only one relationship with ClassFeeComponent
+    class_fee_components = db.relationship('ClassFeeComponent', backref='class_', lazy=True, cascade="all, delete-orphan")
+
+    __table_args__ = (
+        db.UniqueConstraint('class_name', 'school_id', name='uq_class_per_school'),
+    )
+
+    @property
+    def teacher_names(self):
+        return ', '.join([f"{teacher.first_name} {teacher.last_name}" for teacher in self.teachers])
+
+
+
+class StudentClassFeePayment(db.Model):
+    __tablename__ = 'student_class_fee_payments'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    academic_year = db.Column(db.String(10), nullable=False)
-    term = db.Column(db.String(20), nullable=False)
-    payment_status = db.Column(db.Enum('paid', 'unpaid', name='payment_status'), default='unpaid', nullable=False)
-
-    # Relationships
-    fee_payments = db.relationship('FeePayment', backref='student_fee', lazy=True, cascade="all, delete-orphan")
-
-class FeePayment(db.Model):
-    __tablename__ = 'fee_payments'
-    id = db.Column(db.Integer, primary_key=True)
-    student_fee_id = db.Column(db.Integer, db.ForeignKey('student_fees.id'), nullable=False)
+    class_fee_component_id = db.Column(db.Integer, db.ForeignKey('class_fee_components.id'), nullable=False)
     amount_paid = db.Column(db.Float, nullable=False)
     payment_date = db.Column(db.Date, nullable=False)
     payment_method = db.Column(db.String(50), nullable=False)
-    receipt_number = db.Column(db.String(50), nullable=True)
-    notes = db.Column(db.Text, nullable=True)
+    receipt_number = db.Column(db.String(50), nullable=True)  # Optional
+    notes = db.Column(db.Text, nullable=True)  # Optional
+
+    
+    # Relationships
+    student = db.relationship('Student', backref=db.backref('class_fee_payments', cascade="all, delete-orphan"))
+    class_fee_component = db.relationship('ClassFeeComponent', backref=db.backref('student_fee_payments', cascade="all, delete-orphan"))
+
+
 
 class FeeComponent(db.Model):
     __tablename__ = 'fee_components'
@@ -239,9 +280,11 @@ class FeeComponent(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    academic_year = db.Column(db.String(10), nullable=False) # Add academic year
+    term = db.Column(db.String(20), nullable=False) # Add term
 
     # Relationships
-    class_fee_components_assoc = db.relationship('ClassFeeComponent', backref='fee_component', lazy=True, cascade="all, delete-orphan")
+    class_fee_components = db.relationship('ClassFeeComponent', backref='fee_component', lazy=True, cascade="all, delete-orphan")  # Corrected relationship name
 
 class ClassFeeComponent(db.Model):
     __tablename__ = 'class_fee_components'
@@ -249,6 +292,8 @@ class ClassFeeComponent(db.Model):
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
     component_id = db.Column(db.Integer, db.ForeignKey('fee_components.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
+
+
 
 # class School(db.Model):
 #     __tablename__ = 'schools'

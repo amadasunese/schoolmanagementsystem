@@ -10,7 +10,7 @@ from models import (
     User, Student, Teacher, Class, Attendance, Assessment, AssessmentType,
     AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject, School
 )
-from models import Grade, StudentFee, FeeComponent, FeePayment, ClassFeeComponent
+from models import Grade, FeeComponent, StudentClassFeePayment, ClassFeeComponent
 from flask_login import login_user, logout_user, login_required, current_user
 from io import BytesIO
 import pandas as pd
@@ -2383,91 +2383,192 @@ with open("fee_components.json", "r") as file:
     fee_components_from_json = json.load(file)
 
 
+# @main.route('/add_fee_component', methods=['GET', 'POST'])
+# def add_fee_component():
+#     if request.method == 'POST':
+#         # Get form data
+#         name = request.form['name']
+#         description = request.form['description']
+#         school_id = request.form['school_id']
+
+#         # Create a new FeeComponent
+#         component = FeeComponent(
+#             name=name,
+#             description=description,
+#             school_id=school_id
+#         )
+#         db.session.add(component)
+#         db.session.commit()
+#         flash('Fee component added successfully!', 'success')
+#         return redirect(url_for('main.fee_components'))
+
+#     # Fetch all schools for the dropdown
+#     schools = School.query.all()
+#     return render_template('add_fee_component.html', schools=schools)
+
+
+
+# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+# def add_fee_component_to_class():
+#     if request.method == 'POST':
+#         # Get the list of selected class IDs
+#         selected_classes = request.form.getlist('selected_classes')
+
+#         # Get the list of selected component IDs
+#         selected_components = request.form.getlist('selected_components')
+
+#         # Loop through all selected classes and fee components
+#         for class_id in selected_classes:
+#             for component_id in selected_components:
+#                 # Get the amount for the selected component
+#                 amount_field = f"amount_{component_id}"
+#                 if amount_field in request.form and request.form[amount_field]:
+#                     amount = float(request.form[amount_field])
+
+#                     # Add the fee component to the database for the current class
+#                     class_fee_component = ClassFeeComponent(
+#                         class_id=int(class_id),
+#                         component_id=int(component_id),
+#                         amount=amount
+#                     )
+#                     db.session.add(class_fee_component)
+
+#         # Commit all changes to the database
+#         db.session.commit()
+#         flash('Selected fee components added to the selected classes successfully!', 'success')
+#         return redirect(url_for('main.view_class_fees', class_id=class_id))  # Adjust the redirect as needed
+    
+#     # Fetch all classes and fee components for the form
+#     classes = Class.query.all()
+#     components = FeeComponent.query.all()
+#     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
+
+
+# @main.route('/edit_fee_component/<int:id>', methods=['GET', 'POST'])
+# def edit_fee_component(id):
+#     component = FeeComponent.query.get_or_404(id)
+#     if request.method == 'POST':
+#         # Update the fee component
+#         component.name = request.form['name']
+#         component.description = request.form['description']
+#         component.school_id = request.form['school_id']
+#         db.session.commit()
+#         flash('Fee component updated successfully!', 'success')
+#         return redirect(url_for('main.fee_components'))
+
+#     # Fetch all schools for the dropdown
+#     schools = School.query.all()
+#     return render_template('edit_fee_component.html', component=component, schools=schools)
+
+# @main.route('/delete_fee_component/<int:id>', methods=['POST'])
+# def delete_fee_component(id):
+#     component = FeeComponent.query.get_or_404(id)
+#     db.session.delete(component)
+#     db.session.commit()
+#     flash('Fee component deleted successfully!', 'success')
+#     return redirect(url_for('main.fee_components'))
+
 @main.route('/add_fee_component', methods=['GET', 'POST'])
+@login_required  # Protect the route
 def add_fee_component():
     if request.method == 'POST':
-        # Get form data
         name = request.form['name']
         description = request.form['description']
-        school_id = request.form['school_id']
+        academic_year = request.form['academic_year']
+        term = request.form['term']
 
-        # Create a new FeeComponent
+        # Use current_user to get the logged-in user's school
+        school_id = current_user.school_id  # Assuming your User model has a school_id
+
         component = FeeComponent(
             name=name,
             description=description,
-            school_id=school_id
+            school_id=school_id,
+            academic_year=academic_year,
+            term=term
         )
         db.session.add(component)
         db.session.commit()
         flash('Fee component added successfully!', 'success')
         return redirect(url_for('main.fee_components'))
 
-    # Fetch all schools for the dropdown
-    schools = School.query.all()
+    # Filter schools based on the logged-in user
+    schools = School.query.filter_by(id=current_user.school_id).all() # Only show the logged in user's school
     return render_template('add_fee_component.html', schools=schools)
 
 
 
 @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+@login_required
 def add_fee_component_to_class():
     if request.method == 'POST':
-        # Get the list of selected class IDs
         selected_classes = request.form.getlist('selected_classes')
-
-        # Get the list of selected component IDs
         selected_components = request.form.getlist('selected_components')
 
-        # Loop through all selected classes and fee components
         for class_id in selected_classes:
             for component_id in selected_components:
-                # Get the amount for the selected component
                 amount_field = f"amount_{component_id}"
                 if amount_field in request.form and request.form[amount_field]:
                     amount = float(request.form[amount_field])
 
-                    # Add the fee component to the database for the current class
-                    class_fee_component = ClassFeeComponent(
-                        class_id=int(class_id),
-                        component_id=int(component_id),
-                        amount=amount
-                    )
-                    db.session.add(class_fee_component)
+                    # Verify that the class belongs to the user's school
+                    class_obj = Class.query.get(class_id)
+                    if class_obj and class_obj.school_id == current_user.school_id: #Added check to ensure the class belongs to the logged in user's school
+                        class_fee_component = ClassFeeComponent(
+                            class_id=int(class_id),
+                            component_id=int(component_id),
+                            amount=amount
+                        )
+                        db.session.add(class_fee_component)
+                    else:
+                        flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')  # Or handle the error as you see fit.
+                        return redirect(url_for('main.add_fee_component_to_class')) # Redirect back to the form
 
-        # Commit all changes to the database
         db.session.commit()
         flash('Selected fee components added to the selected classes successfully!', 'success')
-        return redirect(url_for('main.view_class_fees', class_id=class_id))  # Adjust the redirect as needed
-    
-    # Fetch all classes and fee components for the form
-    classes = Class.query.all()
-    components = FeeComponent.query.all()
+        # You'll need to determine the correct redirect.  Perhaps a view for a specific class's fees?
+        return redirect(url_for('main.fee_components'))  # Or a more appropriate redirect
+
+    # Filter classes and components by school
+    classes = Class.query.filter_by(school_id=current_user.school_id).all()
+    components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
 
 
+
 @main.route('/edit_fee_component/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_fee_component(id):
     component = FeeComponent.query.get_or_404(id)
+
+    # Make sure the component belongs to the logged-in user's school
+    if component.school_id != current_user.school_id:
+        flash("You don't have permission to edit this fee component.", "danger")
+        return redirect(url_for('main.fee_components'))
+
     if request.method == 'POST':
-        # Update the fee component
         component.name = request.form['name']
         component.description = request.form['description']
-        component.school_id = request.form['school_id']
+        # School_id is not changeable after component creation.
         db.session.commit()
         flash('Fee component updated successfully!', 'success')
         return redirect(url_for('main.fee_components'))
 
-    # Fetch all schools for the dropdown
-    schools = School.query.all()
+    schools = School.query.filter_by(id=current_user.school_id).all()
     return render_template('edit_fee_component.html', component=component, schools=schools)
 
+
 @main.route('/delete_fee_component/<int:id>', methods=['POST'])
+@login_required
 def delete_fee_component(id):
     component = FeeComponent.query.get_or_404(id)
+    if component.school_id != current_user.school_id:
+        flash("You don't have permission to delete this fee component.", "danger")
+        return redirect(url_for('main.fee_components'))
     db.session.delete(component)
     db.session.commit()
     flash('Fee component deleted successfully!', 'success')
     return redirect(url_for('main.fee_components'))
-
 
 # @main.route('/student_fees')
 # def student_fees():
@@ -2477,20 +2578,55 @@ def delete_fee_component(id):
 
     # fees = StudentFee.query.filter_by(school_id=current_user.school_id).all()
 
-@main.route('/student_fees')
+# @main.route('/student_fees')
+# @login_required
+# def student_fees():
+#     # Ensure the user is linked to a school
+#     if not current_user.school_id:
+#         flash("No school linked to your account.", "danger")
+#         return redirect(url_for('main.index'))
+
+#     school_id = current_user.school_id  # Get logged-in user's school
+
+#     # Fetch only student fees related to the user's school
+#     fees = StudentFee.query.join(Student).filter(Student.school_id == school_id).all()
+
+#     return render_template('view_fees.html', fees=fees)
+
+@main.route('/view_class_fees', methods=['GET'])
 @login_required
-def student_fees():
-    # Ensure the user is linked to a school
-    if not current_user.school_id:
-        flash("No school linked to your account.", "danger")
-        return redirect(url_for('main.index'))
+def view_class_fees():
+    class_id = request.args.get('class_id')
+    academic_year = request.args.get('academic_year')
+    term = request.args.get('term')
 
-    school_id = current_user.school_id  # Get logged-in user's school
+    classes = Class.query.filter_by(school_id=current_user.school_id).all()
+    selected_class = None
+    fees = None
 
-    # Fetch only student fees related to the user's school
-    fees = StudentFee.query.join(Student).filter(Student.school_id == school_id).all()
+    if class_id and academic_year and term:
+        class_id = int(class_id)
+        selected_class = Class.query.get(class_id)
 
-    return render_template('view_fees.html', fees=fees)
+        if selected_class and selected_class.school_id == current_user.school_id:
+            fees = ClassFeeComponent.query.join(FeeComponent).filter(
+                ClassFeeComponent.class_id == class_id,
+                FeeComponent.school_id == current_user.school_id,
+                FeeComponent.academic_year == academic_year, # Filter by academic year
+                FeeComponent.term == term # Filter by term
+            ).all()
+
+        else:
+            flash("Invalid class selection.", "danger")
+            return redirect(url_for('main.view_fees'))
+
+    return render_template('view_fees.html',
+                           classes=classes,
+                           fees=fees,
+                           selected_class=selected_class,
+                           selected_class_id=class_id,
+                           selected_academic_year=academic_year,
+                           selected_term=term)
 
 
 @main.route('/generate_class_fees_pdf', methods=['GET'])
@@ -2599,13 +2735,13 @@ def generate_fees():
         return redirect(url_for('main.view_fees', student_id=student_id))
     return render_template('generate_fees.html')
 
-@main.route('/view_fees', methods=['GET'])
-def view_fees():
-    student_id = request.args.get('student_id')
-    fees = []
-    if student_id:
-        fees = StudentFee.query.filter_by(student_id=student_id).all()
-    return render_template('view_fees.html', fees=fees, student_id=student_id)
+# @main.route('/view_fees', methods=['GET'])
+# def view_fees():
+#     student_id = request.args.get('student_id')
+#     fees = []
+#     if student_id:
+#         fees = StudentFee.query.filter_by(student_id=student_id).all()
+#     return render_template('view_fees.html', fees=fees, student_id=student_id)
 
 
 @main.route('/class_fee_components', methods=['GET'])
@@ -2624,14 +2760,14 @@ def display_class_fee_components():
         grouped_fees=grouped_fees
     )
 
-@main.route('/view_class_fees/<int:class_id>')
-def view_class_fees(class_id):
-    # Fetch the specific class by its ID
-    selected_class = Class.query.get_or_404(class_id)
+# @main.route('/view_class_fees/<int:class_id>')
+# def view_class_fees(class_id):
+#     # Fetch the specific class by its ID
+#     selected_class = Class.query.get_or_404(class_id)
     
    
-    class_fee_components = ClassFeeComponent.query.filter_by(class_id=class_id).all()
-    return render_template('view_class_fees.html', selected_class=selected_class, class_fee_components=class_fee_components)
+#     class_fee_components = ClassFeeComponent.query.filter_by(class_id=class_id).all()
+#     return render_template('view_class_fees.html', selected_class=selected_class, class_fee_components=class_fee_components)
 
 
 

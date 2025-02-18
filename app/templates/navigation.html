@@ -53,7 +53,9 @@
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="feesManagementDropdown">
                                 <li><a class="dropdown-item" href="{{ url_for('main.fee_components') }}">Fee Components</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('main.student_fees') }}">Student Fees</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.view_class_fees') }}">Class Fees</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.add_fee_component_to_class') }}">Assign Fees to Classes</a></li>
+                               
                                 <li><a class="dropdown-item" href="{{ url_for('main.record_payment') }}">Record Payment</a></li>
                             </ul>
                         </li>

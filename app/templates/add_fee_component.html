@@ -21,6 +21,18 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="form-group">
+            <label for="academic_year">Academic Year</label>
+            <input type="text" class="form-control" id="academic_year" name="academic_year" required>
+        </div>
+        <div class="form-group">
+            <label for="term">Term</label>
+            <select class="form-control" id="term" name="term" required>
+                <option value="First Term">First Term</option>
+                <option value="Second Term">Second Term</option>
+                <option value="Third Term">Third Term</option>
+            </select>
+        </div>
         <button type="submit" class="btn btn-primary">Add Fee Component</button>
         <a href="{{ url_for('main.fee_components') }}" class="btn btn-secondary">Cancel</a>
     </form>
