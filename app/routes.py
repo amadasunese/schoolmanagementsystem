@@ -2534,17 +2534,92 @@ def add_fee_component():
 #     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
 #     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
 
-@main.route('/add_fee_component_to_class', methods=['GET', 'POST']) # This route will handle the POST request
+# @main.route('/add_fee_component_to_class', methods=['GET', 'POST']) # This route will handle the POST request
+# @login_required
+# def add_fee_component_to_class():
+#     if request.method == 'POST':
+#         selected_classes = request.form.getlist('selected_classes')
+#         selected_components = request.form.getlist('selected_components')
+#         academic_year = request.form['academic_year']
+#         term = request.form['term']
+
+
+#         # make it possible for selection of academic year
+
+#         for class_id in selected_classes:
+#             for component_id in selected_components:
+#                 amount_field = f"amount_{component_id}"
+#                 if amount_field in request.form and request.form[amount_field]:
+#                     amount = float(request.form[amount_field])
+
+#                     class_obj = Class.query.get(class_id)
+#                     if class_obj and class_obj.school_id == current_user.school_id:
+#                         component = FeeComponent.query.get(component_id)
+#                         if component:
+#                             # Check if a fee component with the same name, academic year, and term already exists for the class
+#                             existing_fee = ClassFeeComponent.query.join(FeeComponent).filter(
+#                                 ClassFeeComponent.class_id == class_id,
+#                                 FeeComponent.name == component.name,
+#                                 FeeComponent.academic_year == academic_year,
+#                                 FeeComponent.term == term
+#                             ).first()
+
+#                             if existing_fee:
+#                                 # Update the existing fee
+#                                 existing_fee.amount = amount
+#                             else:
+#                                 # Create a new fee component
+#                                 fee_component = FeeComponent(
+#                                     name=component.name,
+#                                     description=component.description,
+#                                     school_id=current_user.school_id,
+#                                     academic_year=academic_year,
+#                                     term=term
+#                                 )
+#                                 db.session.add(fee_component)
+#                                 db.session.flush() # Get the ID for the new fee_component
+#                                 class_fee_component = ClassFeeComponent(
+#                                     class_id=int(class_id),
+#                                     component_id=fee_component.id, # Use fee_component.id
+#                                     amount=amount
+#                                 )
+#                                 db.session.add(class_fee_component)
+#                         else:
+#                             flash(f"Error: Fee component with ID {component_id} not found.", 'danger')
+#                             return redirect(url_for('main.add_fee_component_to_class'))
+#                     else:
+#                         flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')
+#                         return redirect(url_for('main.add_fee_component_to_class'))
+
+#         db.session.commit()
+#         flash('Selected fee components added to the selected classes successfully!', 'success')
+#         return redirect(url_for('main.generate_fees'))
+
+#     academic_years = [
+#         year.academic_year
+#         for year in db.session.query(FeeComponent.academic_year).filter_by(school_id=current_user.school_id).distinct().all()
+#     ]
+
+#     # Fetch all classes and fee components for the form
+#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
+#     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
+#     return render_template('add_fee_component_to_class.html', classes=classes, components=components, academic_years=academic_years)
+
+
+@main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
 @login_required
 def add_fee_component_to_class():
+    school = School.query.filter_by(id=current_user.school_id).first()
+
+    if not school:
+        flash("No school assigned to your account.", "danger")
+        return redirect(url_for('main.index'))
+
     if request.method == 'POST':
         selected_classes = request.form.getlist('selected_classes')
         selected_components = request.form.getlist('selected_components')
         academic_year = request.form['academic_year']
         term = request.form['term']
-
-
-        # make it possible for selection of academic year
 
         for class_id in selected_classes:
             for component_id in selected_components:
@@ -2555,58 +2630,48 @@ def add_fee_component_to_class():
                     class_obj = Class.query.get(class_id)
                     if class_obj and class_obj.school_id == current_user.school_id:
                         component = FeeComponent.query.get(component_id)
-                        if component:
-                            # Check if a fee component with the same name, academic year, and term already exists for the class
-                            existing_fee = ClassFeeComponent.query.join(FeeComponent).filter(
+                        if component and component.school_id == current_user.school_id:
+                            # Check if a ClassFeeComponent entry *already exists* for this class, component, year, and term
+                            existing_class_fee = ClassFeeComponent.query.join(FeeComponent).filter(
                                 ClassFeeComponent.class_id == class_id,
-                                FeeComponent.name == component.name,
+                                FeeComponent.id == component_id,  # Filter by component ID
                                 FeeComponent.academic_year == academic_year,
-                                FeeComponent.term == term
+                                FeeComponent.term == term,
+                                FeeComponent.school_id == current_user.school_id
                             ).first()
 
-                            if existing_fee:
-                                # Update the existing fee
-                                existing_fee.amount = amount
+                            if existing_class_fee:
+                                # Update the existing ClassFeeComponent
+                                existing_class_fee.amount = amount
                             else:
-                                # Create a new fee component
-                                fee_component = FeeComponent(
-                                    name=component.name,
-                                    description=component.description,
-                                    school_id=current_user.school_id,
-                                    academic_year=academic_year,
-                                    term=term
-                                )
-                                db.session.add(fee_component)
-                                db.session.flush() # Get the ID for the new fee_component
+                                # Create a new ClassFeeComponent ONLY (no new FeeComponent)
                                 class_fee_component = ClassFeeComponent(
                                     class_id=int(class_id),
-                                    component_id=fee_component.id, # Use fee_component.id
+                                    component_id=int(component_id),  # Use the existing component ID
                                     amount=amount
                                 )
                                 db.session.add(class_fee_component)
                         else:
-                            flash(f"Error: Fee component with ID {component_id} not found.", 'danger')
+                            flash(f"Error: Fee component with ID {component_id} not found or doesn't belong to your school.", 'danger')
                             return redirect(url_for('main.add_fee_component_to_class'))
                     else:
                         flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')
                         return redirect(url_for('main.add_fee_component_to_class'))
 
         db.session.commit()
-        flash('Selected fee components added to the selected classes successfully!', 'success')
+        flash('Fee components added/updated successfully!', 'success')  # More accurate message
         return redirect(url_for('main.generate_fees'))
 
+    # GET request handling (same as before)
     academic_years = [
         year.academic_year
         for year in db.session.query(FeeComponent.academic_year).filter_by(school_id=current_user.school_id).distinct().all()
     ]
 
-    # Fetch all classes and fee components for the form
-    classes = Class.query.filter_by(school_id=current_user.school_id).all()
-    components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
+
+    classes = Class.query.filter_by(school_id=school.id).all()
+    components = FeeComponent.query.filter_by(school_id=school.id).all()
     return render_template('add_fee_component_to_class.html', classes=classes, components=components, academic_years=academic_years)
-
-
-
 
 @main.route('/edit_fee_component/<int:id>', methods=['GET', 'POST'])
 @login_required

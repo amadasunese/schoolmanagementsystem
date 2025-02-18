@@ -11,6 +11,21 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
+<style>
+    .background-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('static/images/students.jpg'); /* Replace with your image path */
+        background-size: cover;
+        background-position: center;
+        z-index: -1; /* Place image behind other content */
+        opacity: 0.5; /* Adjust opacity for better readability of text */
+        margin-top: 10px;
+    }
+</style>
 <body>
     <header>
         <div class="logo">
@@ -34,7 +49,7 @@
     </header>
     <style>
         header {
-            background-image: url("/static/images/gpi-girls1.jpg");
+            /* background-image: url("/static/images/gpi-girls1.jpg"); */
             background-repeat: no-repeat;
             background-size: cover;
         }
@@ -63,5 +78,6 @@
         });
     });
 </script>
+
 </body>
 </html>
