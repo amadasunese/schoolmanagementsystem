@@ -2498,12 +2498,50 @@ def add_fee_component():
 
 
 
-@main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
+# @login_required
+# def add_fee_component_to_class():
+#     if request.method == 'POST':
+#         selected_classes = request.form.getlist('selected_classes')
+#         selected_components = request.form.getlist('selected_components')
+
+#         for class_id in selected_classes:
+#             for component_id in selected_components:
+#                 amount_field = f"amount_{component_id}"
+#                 if amount_field in request.form and request.form[amount_field]:
+#                     amount = float(request.form[amount_field])
+
+#                     # Verify that the class belongs to the user's school
+#                     class_obj = Class.query.get(class_id)
+#                     if class_obj and class_obj.school_id == current_user.school_id: #Added check to ensure the class belongs to the logged in user's school
+#                         class_fee_component = ClassFeeComponent(
+#                             class_id=int(class_id),
+#                             component_id=int(component_id),
+#                             amount=amount
+#                         )
+#                         db.session.add(class_fee_component)
+#                     else:
+#                         flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')  # Or handle the error as you see fit.
+#                         return redirect(url_for('main.add_fee_component_to_class')) # Redirect back to the form
+
+#         db.session.commit()
+#         flash('Selected fee components added to the selected classes successfully!', 'success')
+#         # You'll need to determine the correct redirect.  Perhaps a view for a specific class's fees?
+#         return redirect(url_for('main.fee_components'))  # Or a more appropriate redirect
+
+#     # Filter classes and components by school
+#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
+#     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
+#     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
+
+@main.route('/add_fee_component_to_class', methods=['POST']) # This route will handle the POST request
 @login_required
 def add_fee_component_to_class():
     if request.method == 'POST':
         selected_classes = request.form.getlist('selected_classes')
         selected_components = request.form.getlist('selected_components')
+        academic_year = request.form['academic_year']
+        term = request.form['term']
 
         for class_id in selected_classes:
             for component_id in selected_components:
@@ -2511,28 +2549,54 @@ def add_fee_component_to_class():
                 if amount_field in request.form and request.form[amount_field]:
                     amount = float(request.form[amount_field])
 
-                    # Verify that the class belongs to the user's school
                     class_obj = Class.query.get(class_id)
-                    if class_obj and class_obj.school_id == current_user.school_id: #Added check to ensure the class belongs to the logged in user's school
-                        class_fee_component = ClassFeeComponent(
-                            class_id=int(class_id),
-                            component_id=int(component_id),
-                            amount=amount
-                        )
-                        db.session.add(class_fee_component)
+                    if class_obj and class_obj.school_id == current_user.school_id:
+                        component = FeeComponent.query.get(component_id)
+                        if component:
+                            # Check if a fee component with the same name, academic year, and term already exists for the class
+                            existing_fee = ClassFeeComponent.query.join(FeeComponent).filter(
+                                ClassFeeComponent.class_id == class_id,
+                                FeeComponent.name == component.name,
+                                FeeComponent.academic_year == academic_year,
+                                FeeComponent.term == term
+                            ).first()
+
+                            if existing_fee:
+                                # Update the existing fee
+                                existing_fee.amount = amount
+                            else:
+                                # Create a new fee component
+                                fee_component = FeeComponent(
+                                    name=component.name,
+                                    description=component.description,
+                                    school_id=current_user.school_id,
+                                    academic_year=academic_year,
+                                    term=term
+                                )
+                                db.session.add(fee_component)
+                                db.session.flush() # Get the ID for the new fee_component
+                                class_fee_component = ClassFeeComponent(
+                                    class_id=int(class_id),
+                                    component_id=fee_component.id, # Use fee_component.id
+                                    amount=amount
+                                )
+                                db.session.add(class_fee_component)
+                        else:
+                            flash(f"Error: Fee component with ID {component_id} not found.", 'danger')
+                            return redirect(url_for('main.add_fee_component_to_class'))
                     else:
-                        flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')  # Or handle the error as you see fit.
-                        return redirect(url_for('main.add_fee_component_to_class')) # Redirect back to the form
+                        flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')
+                        return redirect(url_for('main.add_fee_component_to_class'))
 
         db.session.commit()
         flash('Selected fee components added to the selected classes successfully!', 'success')
-        # You'll need to determine the correct redirect.  Perhaps a view for a specific class's fees?
-        return redirect(url_for('main.fee_components'))  # Or a more appropriate redirect
+        return redirect(url_for('main.generate_fees'))
 
-    # Filter classes and components by school
+    # Fetch all classes and fee components for the form
     classes = Class.query.filter_by(school_id=current_user.school_id).all()
     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
+
 
 
 
@@ -2629,111 +2693,228 @@ def view_class_fees():
                            selected_term=term)
 
 
+# @main.route('/generate_class_fees_pdf', methods=['GET'])
+# @login_required
+# def generate_class_fees_pdf():
+#     class_id = request.args.get('class_id')
+#     academic_year = request.args.get('academic_year')
+#     term = request.args.get('term')
+
+#     if not class_id or not academic_year or not term:
+#         flash("Please select Class, Academic Year, and Term.", "danger")
+#         return redirect(url_for('main.generate_class_fees'))
+    
+#     school = School.query.filter_by(id=current_user.school_id).first() # Use current_user's school
+
+#     if not school:
+#         return "School information not found", 404
+
+#     # assessment = Assessment.query.filter_by(school_id=school.id).first() # Filter by school
+
+#     # if not assessment:
+#     #     return "Assessment information not found", 404
+
+#     school_name = school.name
+#     school_address = school.address
+#     academic_year = academic_year
+
+#     classes = Class.query.filter_by(school_id=school.id, id=class_id).all() # Filter classes by school and class_id
+
+#     if not classes:
+#         flash("Class not found or does not belong to your school.", "danger")
+#         return redirect(url_for('main.generate_class_fees'))
+
+#     # classes = Class.query.filter_by(school_id=school.id).all() # Filter classes by school
+
+#     class_fees = []
+#     for cls in classes:
+#         fee_components = ClassFeeComponent.query.join(FeeComponent).filter(
+#             ClassFeeComponent.class_id == cls.id,
+#             FeeComponent.school_id == current_user.school_id,
+#             FeeComponent.academic_year == academic_year,
+#             FeeComponent.term == term
+#         ).all()
+#         total_fee = sum([component.amount for component in fee_components])
+#         class_fees.append({
+#             "class_name": cls.class_name,
+#             "total_fee": total_fee,
+#             "fee_breakdown": [(comp.fee_component.name, comp.amount) for comp in fee_components]
+#         })
+
+#     # Generate the PDF
+#         # pdf.build(elements)
+#         # buffer.seek(0)
+#         # return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
+
+#     buffer = BytesIO()
+#     pdf = SimpleDocTemplate(buffer, pagesize=letter)
+#     elements = []
+
+#     # Add School Header
+#     elements.append(Table(
+#         [[school_name], [school_address], [academic_year]],
+#         style=TableStyle([
+#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+#             ('FONTSIZE', (0, 0), (-1, -1), 14),
+#             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+#         ]),
+#         colWidths=[500]
+#     ))
+
+#     elements.append(Table([[" "]]))  # Spacer
+
+#     # Add Class Fees Table
+#     data = [["Class Name", "Total Fee (₦)", "Fee Breakdown"]]
+#     for class_fee in class_fees:
+#         fee_breakdown_text = "\n".join([f"{name}: ₦{amount}" for name, amount in class_fee['fee_breakdown']])
+#         data.append([class_fee['class_name'], f"₦{class_fee['total_fee']}", fee_breakdown_text])
+
+#     table = Table(data, colWidths=[150, 100, 250])
+#     table.setStyle(TableStyle([
+#         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+#         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+#         ('FONTSIZE', (0, 0), (-1, 0), 12),
+#         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+#         ('GRID', (0, 0), (-1, -1), 1, colors.black),
+#     ]))
+#     elements.append(table)
+
+#     pdf.build(elements)
+
+#     # Return the PDF as a downloadable file
+#     # buffer.seek(0)
+#     # return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
+
+#     pdf.build(elements)
+#     buffer.seek(0)
+#     return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
+
+
 @main.route('/generate_class_fees_pdf', methods=['GET'])
+@login_required
 def generate_class_fees_pdf():
+    class_id = request.args.get('class_id')
+    academic_year = request.args.get('academic_year')
+    term = request.args.get('term')
 
-    # Fetch the first school (adjust based on your requirements)
-    school = School.query.first()
+    if not class_id or not academic_year or not term:
+        flash("Please select Class, Academic Year, and Term.", "danger")
+        return redirect(url_for('main.generate_class_fees'))
 
-    # Handle case when no school is found
-    if not school:
-        return "School information not found", 404
+    try:  # Add a try-except block for debugging
+        school = School.query.filter_by(id=current_user.school_id).first()
 
-    # Fetch the latest assessment or a specific one
-    assessment = Assessment.query.first()
+        if not school:
+            return "School information not found", 404
 
-    # Handle case when no assessment is found
-    if not assessment:
-        return "Assessment information not found", 404
+        school_name = school.name
+        school_address = school.address
 
-    # Example school information
-    school_name = school.name
-    school_address = school.address
-    academic_session = assessment.academic_session
+        classes = Class.query.filter_by(school_id=school.id, id=class_id).all()
 
-    # Fetch class fees data
-    classes = Class.query.all()
-    class_fees = []
-    for cls in classes:
-        # Fetch fee components for each class
-        fee_components = ClassFeeComponent.query.filter_by(class_id=cls.id).all()
-        total_fee = sum([component.amount for component in fee_components])
-        class_fees.append({
-            "class_name": cls.class_name,
-            "total_fee": total_fee,
-            "fee_breakdown": [(comp.fee_component.name, comp.amount) for comp in fee_components]
-        })
+        if not classes:
+            flash("Class not found or does not belong to your school.", "danger")
+            return redirect(url_for('main.generate_class_fees'))
 
-    # Generate the PDF
-    buffer = BytesIO()
-    pdf = SimpleDocTemplate(buffer, pagesize=letter)
-    elements = []
+        class_fees = []
+        for cls in classes:
+            fee_components = ClassFeeComponent.query.join(FeeComponent).filter(
+                ClassFeeComponent.class_id == cls.id,
+                FeeComponent.school_id == current_user.school_id,
+                FeeComponent.academic_year == academic_year,  # Use the passed academic_year
+                FeeComponent.term == term  # Use the passed term
+            ).all()
 
-    # Add School Header
-    elements.append(Table(
-        [[school_name], [school_address], [academic_session]],
-        style=TableStyle([
+            total_fee = sum(comp.amount for comp in fee_components)
+            class_fees.append({
+                "class_name": cls.class_name,
+                "total_fee": total_fee,
+                "fee_breakdown": [(comp.fee_component.name, comp.amount) for comp in fee_components]
+            })
+
+        buffer = BytesIO()
+        pdf = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = []
+
+        elements.append(Table(
+            [[school_name], [school_address], [academic_year]],  # Use academic_year here
+            style=TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 14),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ]),
+            colWidths=[500]
+        ))
+
+        elements.append(Table([[" "]]))  # Spacer
+
+        data = [["Class Name", "Total Fee (₦)", "Fee Breakdown"]]
+        for class_fee in class_fees:
+            fee_breakdown_text = "\n".join([f"{name}: ₦{amount}" for name, amount in class_fee['fee_breakdown']])
+            data.append([class_fee['class_name'], f"₦{class_fee['total_fee']}", fee_breakdown_text])
+
+        table = Table(data, colWidths=[150, 100, 250])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 14),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ]),
-        colWidths=[500]
-    ))
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(table)
 
-    elements.append(Table([[" "]]))  # Spacer
+        pdf.build(elements)  # Only build the PDF once
 
-    # Add Class Fees Table
-    data = [["Class Name", "Total Fee (₦)", "Fee Breakdown"]]
-    for class_fee in class_fees:
-        fee_breakdown_text = "\n".join([f"{name}: ₦{amount}" for name, amount in class_fee['fee_breakdown']])
-        data.append([class_fee['class_name'], f"₦{class_fee['total_fee']}", fee_breakdown_text])
+        buffer.seek(0)
+        return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
 
-    table = Table(data, colWidths=[150, 100, 250])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    elements.append(table)
+    except Exception as e:  # Catch any exceptions for debugging
+        print(f"Error generating PDF: {e}")  # Print the error message
+        flash(f"An error occurred while generating the PDF: {e}", "danger")  # Flash the error
+        return redirect(url_for('main.generate_class_fees'))  # Redirect back to the form
+    
+@main.route('/generate_fees', methods=['GET']) # Changed to GET to render a template for selecting class, academic year and term
+@login_required
+def generate_fees():
+    schools = School.query.filter_by(id=current_user.school_id).all()
+    classes = Class.query.filter_by(school_id=current_user.school_id).all()
+    return render_template('generate_fees.html', schools=schools, classes=classes) # Pass schools and classes to the template
 
-    pdf.build(elements)
-
-    # Return the PDF as a downloadable file
-    buffer.seek(0)
-    return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
 
 @main.route('/generate_class_fees', methods=['GET'])
+@login_required
 def generate_class_fees():
-    return render_template('generate_fees.html')
+    classes = Class.query.filter_by(school_id=current_user.school_id).all() # Fetch classes
+    return render_template('generate_class_fees.html', selected_academic_year=request.args.get('academic_year'), selected_term=request.args.get('term'), selected_class_id=request.args.get('class_id'), classes = classes) # Pass selected values to the template, include classes
 
 
+# @main.route('/generate_fees', methods=['GET', 'POST'])
+# def generate_fees():
+#     if request.method == 'POST':
+#         student_id = request.form['student_id']
+#         component_id = request.form['component_id']
+#         amount = float(request.form['amount'])
+#         academic_year = request.form['academic_year']
+#         term = request.form['term']
 
-@main.route('/generate_fees', methods=['GET', 'POST'])
-def generate_fees():
-    if request.method == 'POST':
-        student_id = request.form['student_id']
-        component_id = request.form['component_id']
-        amount = float(request.form['amount'])
-        academic_year = request.form['academic_year']
-        term = request.form['term']
-
-        fee = StudentFee(
-            student_id=student_id,
-            component_id=component_id,
-            amount=amount,
-            academic_year=academic_year,
-            term=term,
-            payment_status='unpaid'
-        )
-        db.session.add(fee)
-        db.session.commit()
-        return redirect(url_for('main.view_fees', student_id=student_id))
-    return render_template('generate_fees.html')
+#         fee = StudentFee(
+#             student_id=student_id,
+#             component_id=component_id,
+#             amount=amount,
+#             academic_year=academic_year,
+#             term=term,
+#             payment_status='unpaid'
+#         )
+#         db.session.add(fee)
+#         db.session.commit()
+#         return redirect(url_for('main.view_fees', student_id=student_id))
+#     return render_template('generate_fees.html')
 
 # @main.route('/view_fees', methods=['GET'])
 # def view_fees():
