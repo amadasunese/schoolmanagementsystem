@@ -64,12 +64,31 @@
     }
 </style>
 
+ <!-- Flash Messages -->
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <div class="mt-4">
+     {% for category, message in messages %}
+     <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+         {{ message }}
+         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+     </div>
+     {% endfor %}
+ </div>
+ {% endif %}
+ {% endwith %}
+
 <div class="form-container">
     <h2>Add Assessment Type</h2>
     <form method="POST" action="{{ url_for('main.add_assessment_type') }}">
         {{ form.hidden_tag() }}
+
         <label for="name">Assessment Type Name</label>
         <input type="text" id="name" name="name" placeholder="Enter assessment type name" required>
+
+        <!-- Remove school selection, automatically associate with logged-in user -->
+        <p><strong>School:</strong> {{ current_user.school.name }}</p>
+
         <button type="submit">Add</button>
     </form>
     <div class="back-link">

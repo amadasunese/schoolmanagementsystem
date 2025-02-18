@@ -8,10 +8,11 @@ import os
 from extensions import db, migrate, login_manager, bootstrap
 
 
+
 # Create and configure the Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
-app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'app/static/uploads')
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'static/uploads')
 
 # Initialize extensions with app
 db.init_app(app)

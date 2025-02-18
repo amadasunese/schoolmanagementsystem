@@ -69,6 +69,11 @@
                 <td>{{ assessment_type.id }}</td>
                 <td>{{ assessment_type.name }}</td>
                 <td>
+                    <a href="{{ url_for('main.edit_assessment_type', assessment_type_id=assessment_type.id) }}">Edit</a>
+                    |
+                    <a href="{{ url_for('main.delete_assessment_type', assessment_type_id=assessment_type.id) }}">Delete</a>
+                </td>
+                <td>
                    
                 </td>
             </tr>

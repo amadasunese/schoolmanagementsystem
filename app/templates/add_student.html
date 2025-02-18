@@ -58,7 +58,7 @@
 
             {% if form.class_id.choices[0][0] == -1 %}
             <div class="alert alert-warning" role="alert">
-                No classes are available. Please add a class first.
+                No classes are available for your school. Please add a class first.
             </div>
             {% endif %}
 
@@ -67,9 +67,8 @@
                 {{ form.class_id(class="form-control") }}
             </div>
 
-            <div>
-                {{ form.school_id.label }} {{ form.school_id(class="form-control") }}
-            </div>
+            <div class="mb-3">  {{ form.school_id.label(class="form-label") }}
+                {{ form.school_id(class="form-control", readonly=True) }}  </div>
 
             <div class="d-grid">
                 {{ form.submit(class="btn btn-primary") }}

@@ -9,7 +9,7 @@ login_manager = LoginManager()
 bootstrap = Bootstrap()
 
 # Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
-bootstrap = Bootstrap()
-login_manager = LoginManager()
+# db = SQLAlchemy()
+# migrate = Migrate()
+# bootstrap = Bootstrap()
+# login_manager = LoginManager()

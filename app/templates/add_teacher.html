@@ -35,11 +35,13 @@
         <div>
             {{ form.photo.label }} {{ form.photo(class="form-control") }}
         </div>
-        <div>
-            {{ form.subject.label }} {{ form.subject(class="form-control", multiple=True) }}
+        <div class="mb-3">
+            {{ form.subject.label(class="form-label") }}
+            {{ form.subject(class="form-control", multiple=True) }}
         </div>
-        <div>
-            {{ form.school_id.label }} {{ form.school_id(class="form-control") }}
+        <div class="mb-3">
+            {{ form.school_id.label(class="form-label") }}
+            {{ form.school_id(class="form-control", readonly=True) }}
         </div>
         <button type="submit" class="btn btn-primary mt-3">Add Teacher</button>
     </form>

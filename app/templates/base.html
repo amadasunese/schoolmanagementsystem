@@ -12,6 +12,39 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
 <body>
+    <header>
+        <div class="logo">
+            <a href="{{ url_for('main.index') }}">
+                <img src="{{ url_for('main.uploaded_file', filename=g.school_logo.split('/')[-1]) }}" 
+                     alt="School Logo" 
+                     width="100" height="auto">
+            </a>
+        </div>
+        <style>
+            @media (max-width: 767px) {
+                .title1 {
+                    display: none;
+                }
+                .logo {
+                    display: none;
+                }
+            }
+        </style>
+        <h1 class="title1" style="color:aliceblue; font-family: 'Roboto', sans-serif;">School Managment Portal</h1> 
+    </header>
+    <style>
+        header {
+            background-image: url("/static/images/gpi-girls1.jpg");
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        /* @media (min-width: 300px) {
+                .title1 {
+                    display: none;
+                }
+            } */
+    </style>
     {% include 'navigation.html' %}
     
     <div class="container">

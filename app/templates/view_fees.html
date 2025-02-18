@@ -13,10 +13,11 @@
     </form>
 
     {% if fees %}
-        <h2>Fees for Student ID: {{ student_id }}</h2>
+        <h2>Fees for Student ID: {{ fees.student_id }}</h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
+                    <th>Student Name</th>
                     <th>Fee Component</th>
                     <th>Amount</th>
                     <th>Academic Year</th>
@@ -27,6 +28,7 @@
             <tbody>
                 {% for fee in fees %}
                     <tr>
+                        <td>{{ fee.student.name }}</td>
                         <td>{{ fee.component.name }}</td>
                         <td>₦{{ fee.amount }}</td>
                         <td>{{ fee.academic_year }}</td>
