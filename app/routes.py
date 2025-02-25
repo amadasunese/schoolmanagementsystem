@@ -1,61 +1,77 @@
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, g, session
-from extensions import db
-import os
-from forms import (
-    TeacherForm, ClassForm, GradeForm, AttendanceForm, StudentForm, AssignTeachersForm,
-    AssessmentForm, AssessmentResultForm, SubjectForm, SchoolForm, UserForm, AssessmentTypeForm, AssignSubjectToClassForm, LoginForm
-)
-from models import (
-    User, Student, Teacher, Class, Attendance, Assessment, AssessmentType,
-    AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject, School
-)
-from models import Grade, FeeComponent, StudentClassFeePayment, ClassFeeComponent
-from flask_login import login_user, logout_user, login_required, current_user
-from io import BytesIO
-import pandas as pd
-from docx import Document
-from flask import send_from_directory
-from sqlalchemy.sql import func
-from werkzeug.utils import secure_filename
-from flask import current_app
-from config import Config
-from sqlalchemy.orm import joinedload
-from reportlab.lib.pagesizes import A4, letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle, SimpleDocTemplate
-from io import BytesIO
-from flask import send_file, jsonify
-import json
-from collections import defaultdict
-from sqlalchemy.orm import aliased
+# from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, g, session
+# from extensions import db
+# import os
+# from forms import (
+#     TeacherForm, ClassForm, GradeForm, AttendanceForm, StudentForm, AssignTeachersForm,
+#     AssessmentForm, AssessmentResultForm, SubjectForm, SchoolForm, UserForm, AssessmentTypeForm, AssignSubjectToClassForm, LoginForm
+# )
+# from models import (
+#     User, Student, Teacher, Class, Attendance, Assessment, AssessmentType,
+#     AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject, School
+# )
+# from models import Grade, FeeComponent, StudentClassFeePayment, ClassFeeComponent
+# from flask_login import login_user, logout_user, login_required, current_user
+# from io import BytesIO
+# import pandas as pd
+# from docx import Document
+# from flask import send_from_directory
+# from sqlalchemy.sql import func
+# from werkzeug.utils import secure_filename
+# from flask import current_app
+# from config import Config
+# from sqlalchemy.orm import joinedload
+# from reportlab.lib.pagesizes import A4, letter
+# from reportlab.pdfgen import canvas
+# from reportlab.lib import colors
+# from reportlab.platypus import Table, TableStyle, SimpleDocTemplate
+# from io import BytesIO
+# from flask import send_file, jsonify
+# import json
+# from collections import defaultdict
+# from sqlalchemy.orm import aliased
 
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.utils import ImageReader
-from flask import g 
-from utils import school_required, filter_by_school
-import uuid
+# from reportlab.lib.pagesizes import letter
+# from reportlab.pdfgen import canvas
+# from io import BytesIO
+# from reportlab.lib.pagesizes import A4
+# from reportlab.pdfgen import canvas
+# from reportlab.lib.styles import getSampleStyleSheet
+# from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
+# from reportlab.lib import colors
+# from io import BytesIO
+# from reportlab.lib.pagesizes import A4
+# from reportlab.pdfgen import canvas
+# from reportlab.lib.styles import getSampleStyleSheet
+# from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
+# from reportlab.lib import colors
+# from reportlab.lib.utils import ImageReader
+# from flask import g 
+# from utils import school_required, filter_by_school
+# import uuid
+# from flask_wtf.csrf import validate_csrf
+# from forms import RemarksForm
 
+# from reportlab.pdfgen import canvas
+# from reportlab.lib.utils import ImageReader
+# from io import BytesIO
+# import os
+# from reportlab.lib import colors
+# from reportlab.lib.pagesizes import A4
+# from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+# from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+# from reportlab.lib.units import inch
+# from reportlab.lib.utils import ImageReader
+# from reportlab.lib.enums import TA_CENTER
+# from reportlab.platypus import Image
+# from flask_wtf.csrf import generate_csrf
+
+from utils import *
 
 # Create a Blueprint instance
 main = Blueprint('main', __name__)
 
     
-
 @main.route('/static/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
@@ -71,7 +87,7 @@ def load_school_details():
                 g.school_name = school.name
                 g.school_logo = school.school_logo if school.school_logo else 'static/uploads/default-logo.png'
                 session['school_name'] = g.school_name
-                session['school_logo'] = g.school_logo  # Store in session
+                session['school_logo'] = g.school_logo
         else:
             g.school_name = session['school_name']
             g.school_logo = session['school_logo']
@@ -95,7 +111,7 @@ def index():
                     g.school_name = school.name
                     g.school_logo = school.school_logo if school.school_logo else 'uploads/default-logo.png'
                     session['school_name'] = g.school_name
-                    session['school_logo'] = g.school_logo  # Store in session
+                    session['school_logo'] = g.school_logo
 
             # Redirect based on role
             next_page = request.args.get('next')  
@@ -105,65 +121,21 @@ def index():
             if user.role == 'admin':
                 return redirect(url_for('main.dashboard'))
             elif user.role == 'teacher':
-                return redirect(url_for('teacher.dashboard'))
+                return redirect(url_for('main.teacher_dashboard'))
             else:  
-                return redirect(url_for('student.dashboard'))
+                return redirect(url_for('main.student_dashboard'))
 
         flash('Invalid username or password', 'danger')
 
-    return render_template('index.html', form=form, is_authenticated=current_user.is_authenticated)
+    return render_template('index.html',
+                           form=form,
+                           is_authenticated=current_user.is_authenticated)
 
 
 
-
+# School Registration
 def generate_unique_code():
     return str(uuid.uuid4())
-
-# When you create a new school:
-# new_school = School(name="My School", registration_code=generate_unique_code())
-# db.session.add(new_school)
-# db.session.commit()
-
-# @main.route('/register_school', methods=['GET', 'POST'])
-# def register_school():
-#     form = SchoolForm()
-#     if form.validate_on_submit():
-#         school_logo_path = None
-
-#         if form.school_logo.data:
-#             logo_file = form.school_logo.data
-#             filename = secure_filename(logo_file.filename)
-#             upload_folder = current_app.config['UPLOAD_FOLDER']  # Correct way to access config
-#             filepath = os.path.join(upload_folder, filename)
-
-#             try:
-#                 logo_file.save(filepath)
-#                 school_logo_path = f'static/images/school_logos/{filename}'  # Store relative path
-#                 flash('Logo uploaded successfully!', 'success')
-#             except Exception as e:
-#                 flash(f'Error uploading logo: {e}', 'danger')
-#                 print(f"Logo upload error: {e}")
-
-#         school = School(
-#             name=form.name.data,
-#             address=form.address.data,
-#             email=form.email.data,
-#             phone_number=form.phone_number.data,
-#             school_logo=school_logo_path,  # Store relative path
-#             website=form.website.data
-#         )
-
-#         try:
-#             db.session.add(school)
-#             db.session.commit()
-#             flash('School registered successfully!', 'success')
-#             return redirect(url_for('main.register_user'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f"Database error: {e}", "danger")
-#             print(f"Database error: {e}")
-
-#     return render_template('register_school.html', form=form)
 
 @main.route('/register_school', methods=['GET', 'POST'])
 def register_school():
@@ -173,12 +145,12 @@ def register_school():
 
         if form.school_logo.data:
             logo_file = form.school_logo.data
-            filename = secure_filename(logo_file.filename)  # Sanitize filename
+            filename = secure_filename(logo_file.filename)
             upload_folder = current_app.config['UPLOAD_FOLDER']
             filepath = os.path.join(upload_folder, filename)
 
             # Check if the upload folder exists; create it if it doesn't
-            os.makedirs(upload_folder, exist_ok=True)  # Important!
+            os.makedirs(upload_folder, exist_ok=True)
 
             try:
                 logo_file.save(filepath)
@@ -189,9 +161,9 @@ def register_school():
                 print(f"Logo upload error: {e}")
                 # Consider logging the full traceback for debugging:
                 import traceback
-                traceback.print_exc()  # Print the traceback to the console
+                traceback.print_exc()
 
-        registration_code = str(uuid.uuid4())  # Generate a unique registration code
+        registration_code = str(uuid.uuid4())
         school = School(
             name=form.name.data,
             address=form.address.data,
@@ -199,17 +171,17 @@ def register_school():
             phone_number=form.phone_number.data,
             school_logo=school_logo_path,
             website=form.website.data,
-            registration_code=registration_code  # Add the registration code
+            registration_code=registration_code
         )
 
         try:
             db.session.add(school)
             db.session.commit()
             flash('School registered successfully!  Provide this registration link to the school: ' + 
-                  url_for('main.register_user', school_code=registration_code, _external=True), 'success') # Show the link!
+                  url_for('main.register_user', school_code=registration_code, _external=True), 'success')
 
             # Redirect to a confirmation page or the school's dashboard
-            return redirect(url_for('main.school_confirmation', school_id=school.id)) # Example redirect
+            return redirect(url_for('main.school_confirmation', school_id=school.id))
         except Exception as e:
             db.session.rollback()
             flash(f"Database error: {e}", "danger")
@@ -258,8 +230,6 @@ def edit_school(id):
         school.phone_number = form.phone_number.data
         school.website = form.website.data
         school.school_logo = photo_filename
-    
-    
 
         # Handle photo upload
         if form.school_logo.data:
@@ -299,45 +269,103 @@ def edit_school(id):
 
     return render_template('edit_schools.html', school=school, form=form)
 
+# User registration
 @main.route('/register_user', methods=['GET', 'POST'])
+@login_required
 def register_user():
-    school_code = request.args.get('school_code') # Get the school code from the URL
+    if not current_user.is_authenticated:
+        flash('You need to be logged in to access this page.', 'danger')
+        return redirect(url_for('main.index'))
 
+    if current_user.role != 'admin':
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('main.index'))
+
+    school_code = request.args.get('school_code')
     if not school_code:
         flash('Invalid registration link.', 'danger')
-        return redirect(url_for('main.index')) # Or wherever you want to redirect
+        return redirect(url_for('main.index'))
 
-    school = School.query.filter_by(registration_code=school_code).first() # Assuming you add 'registration_code' to your School model
+    school = School.query.filter_by(registration_code=school_code).first()
     if not school:
         flash('Invalid school code.', 'danger')
         return redirect(url_for('main.index'))
-    
+
+    students = Student.query.filter_by(school_id=school.id).all()
+    print("student details is:" ,students)
+
+    teachers = Teacher.query.filter_by(school_id=school.id).all()
+
     form = UserForm()
-    form.school_id.choices = [(school.id, school.name)] # Limit choices to the specific school
-    form.school_id.data = school.id # Pre-select the school (important!)
-    form.school_id.render_kw = {'readonly': True} # Make the school field read-only in the form
+    form.school_id.choices = [(school.id, school.name)]
+    form.school_id.data = school.id
+    form.school_id.render_kw = {'readonly': True}
+
+    form.student_id.choices = [(s.id, f"{s.first_name} {s.last_name} ({s.id})") for s in students]
+    form.teacher_id.choices = [(t.id, f"{t.first_name} {t.last_name}") for t in teachers]
+
+    # student = None  # Initialize student
+    # teacher = None  # Initialize teacher
+
+    # print('student is:', student)
 
     if form.validate_on_submit():
         if User.query.filter_by(username=form.username.data).first():
             flash('Username already exists!', 'danger')
-            return redirect(url_for('main.register_user'))
+            return redirect(url_for('main.register_user', school_code=school_code))
+
         user = User(
             username=form.username.data,
             role=form.role.data,
-            school_id=school.id # Use the school ID directly
+            school_id=school.id,
+            student_id=students  # Initialize to None
+            # teacher_id=None   # Initialize to None
         )
+
+        if form.role.data == 'student':
+            student = Student.query.get(form.student_id.data)
+            if student:
+                user.student_id = student.id
+            else:
+                flash("Invalid student selected.", "danger")
+                return render_template('register_user.html',
+                                       form=form,
+                                       school_name=school.name,
+                                       school_code=school_code)
+
+        elif form.role.data == 'teacher':
+            teacher = Teacher.query.get(form.teacher_id.data)
+            if teacher:
+                user.teacher_id = teacher.id
+            else:
+                flash("Invalid teacher selected.", "danger")
+                return render_template('register_user.html',
+                                       form=form,
+                                       school_name=school.name,
+                                       school_code=school_code)
+
         user.set_password(form.password.data)
         try:
             db.session.add(user)
             db.session.commit()
             flash('User registered successfully!', 'success')
             return redirect(url_for('main.index'))
-        except Exception as e:
+        except Exception as e: # Catch potential exceptions
             db.session.rollback()
-            flash('An error occurred while registering the user.', 'danger')
-    return render_template('register_user.html', form=form, school_name=school.name)
+            flash(f'An error occurred while registering the user: {e}', 'danger')
+            #Log the error for debugging.
+            print(f"Registration Error: {e}")
+            return render_template('register_user.html',
+                                   form=form,
+                                   school_name=school.name,
+                                   school_code=school_code)
 
-
+    return render_template(
+        'register_user.html',
+        form=form,
+        school_name=school.name,
+        school_code=school_code
+    )
 
 @main.route('/logout')
 @login_required
@@ -350,10 +378,43 @@ def logout():
 @main.route('/student/dashboard')
 @login_required
 def student_dashboard():
-    if current_user.role!= 'student':
+    if current_user.role != 'student':
         return redirect(url_for('main.index'))
-    student = Student.query.get(current_user.id).last_name
-    return render_template('student_dashboard.html', student=student)
+
+    # Get student details linked to the current user
+    student = Student.query.filter_by(id=current_user.student_id).first()
+    print('student details:', student)
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('main.index'))
+
+    # Fetch associated school
+    school = student.school
+    if not school:
+        flash('Student is not linked to a school.', 'danger')
+        return redirect(url_for('main.index'))
+
+    # Fetch the student's grades & results
+    grades = Grade.query.filter_by(student_id=student.id).all()
+
+    assessments = (
+        db.session.query(AssessmentSubjectScore, Subject.name)
+        .join(Subject, AssessmentSubjectScore.subject_id == Subject.id)
+        .filter(AssessmentSubjectScore.student_id == current_user.student_id)
+        .distinct(Subject.name)
+        .all()
+    )
+
+
+
+    return render_template(
+        'student_dashboard.html',
+        student=student,
+        school=school,
+        grades=grades,
+        assessments=assessments
+    )
+
 
 # Teacher Dashboard (Only accessible by Teachers)
 @main.route('/teacher/dashboard')
@@ -361,54 +422,72 @@ def student_dashboard():
 def teacher_dashboard():
     if current_user.role != 'teacher':
         return redirect(url_for('main.index'))
-    teacher_name = Teacher.query.get(current_user.id).name
-    return render_template('teacher_dashboard.html', teacher_name=teacher_name)
 
+    try:
+        teacher = current_user.role == 'teacher'
+
+        if not teacher:
+            flash("Teacher information not found.", "danger")
+            return redirect(url_for('main.index'))
+
+        teacher_name = current_user.username
+        # school = teacher.school
+        school = School.query.get(current_user.school_id)
+
+
+        if not school:
+            flash("Teacher is not associated with a school.", "danger")
+            return redirect(url_for('main.index'))
+        
+        classes_taught = Class.query.join(Class.teachers).filter(
+            Teacher.id == current_user.id,
+            Class.school_id == school.id
+        ).all()
+
+        return render_template('teacher_dashboard.html',
+                               teacher_name=teacher_name,
+                               classes_taught=classes_taught,
+                               teacher=teacher,
+                               school_name=school.name)
+
+    except Exception as e:
+        print(f"Error in teacher dashboard route: {e}")
+        flash("An error occurred while accessing the dashboard. Please try again later.", "danger")
+        return redirect(url_for('main.index'))
 
 
 # Dashboard (Only accessible by Admins)
-# @main.route('/dashboard')
-# # @school_required
-# # @filter_by_school
-
-# @login_required
-# def dashboard():
-#     if not current_user.role== 'admin':
-#         return redirect(url_for('main.index'))
-#     school_name = School.query.get(current_user.school_id).name
-#     student_count = Student.query.count()
-#     teacher_count = Teacher.query.count()
-#     class_count = Class.query.count()
-#     return render_template('dashboard.html', school_name=school_name, student_count=student_count,
-#                            teacher_count=teacher_count, class_count=class_count)
-
-
 @main.route('/dashboard')
 @login_required
 def dashboard():
     if current_user.role != 'admin':
         return redirect(url_for('main.index'))
 
-    # Get the school linked to the logged-in user
-    school = School.query.get(current_user.school_id)
-    if not school:
-        flash("No school linked to your account.", "danger")
+    try:
+        school = School.query.get(current_user.school_id)
+
+        if not school:
+            flash("No school linked to your account or invalid school ID.", "danger")
+            return redirect(url_for('main.index'))
+
+        school_name = school.name
+
+        student_count = Student.query.filter_by(school_id=current_user.school_id).count()
+        teacher_count = Teacher.query.filter_by(school_id=current_user.school_id).count()
+        class_count = Class.query.filter_by(school_id=current_user.school_id).count()
+
+        return render_template('dashboard.html',
+                               school_name=school_name,
+                               student_count=student_count,
+                               teacher_count=teacher_count,
+                               class_count=class_count,
+                               school=school)
+
+    except Exception as e:
+        print(f"Error in dashboard route: {e}")
+        flash("An error occurred while accessing the dashboard. Please try again later.", "danger")
         return redirect(url_for('main.index'))
-
-    school_name = school.name
-
-    # Filter counts by school_id
-    student_count = Student.query.filter_by(school_id=current_user.school_id).count()
-    teacher_count = Teacher.query.filter_by(school_id=current_user.school_id).count()
-    class_count = Class.query.filter_by(school_id=current_user.school_id).count()
-
-    return render_template('dashboard.html', 
-                           school_name=school_name, 
-                           student_count=student_count,
-                           teacher_count=teacher_count, 
-                           class_count=class_count)
-
-
+    
 # Report Generation Route
 @main.route('/generate_report/<report_type>')
 @login_required
@@ -510,7 +589,7 @@ def add_attendance():
             flash("Invalid student selected.", "danger")
             return redirect(url_for('main.add_attendance'))
 
-        class_id = student.class_id  # Auto-detect class
+        class_id = student.class_id
 
         # Check if an attendance record exists for this student
         attendance = Attendance.query.filter_by(student_id=student_id, class_id=class_id).first()
@@ -560,54 +639,8 @@ def students():
     return render_template('students.html', students=students)
 
 
-# @main.route('/add_student', methods=['GET', 'POST'])
-# def add_student():
-#     form = StudentForm()
-
-#     # Populate the choices dynamically for class_id
-#     form.class_id.choices = [(cls.id, cls.class_name) for cls in Class.query.all()]
-#     if not form.class_id.choices:
-#         form.class_id.choices = [(-1, 'No classes available')]
-
-#     # Populate the choices dynamically for school_id
-#     form.school_id.choices = [(sch.id, sch.name) for sch in School.query.all()]
-#     if not form.school_id.choices:
-#         form.school_id.choices = [(-1, 'No schools available')]
-
-#     if form.validate_on_submit():
-#         # Handle the form submission
-#         try:
-#             if form.class_id.data == -1:
-#                 flash("Please select a valid class.", "warning")
-#                 return render_template('add_student.html', form=form)
-
-#             if form.school_id.data == -1:
-#                 flash("Please select a valid school.", "warning")
-#                 return render_template('add_student.html', form=form)
-
-#             student = Student(
-#                 first_name=form.first_name.data,
-#                 last_name=form.last_name.data,
-#                 date_of_birth=form.date_of_birth.data,
-#                 enrollment_date=form.enrollment_date.data,
-#                 gender=form.gender.data,
-#                 grade_level=form.grade_level.data,
-#                 contact_email=form.contact_email.data,
-#                 school_id=current_user.school_id,
-#                 class_id=form.class_id.data
-#             )
-#             db.session.add(student)
-#             db.session.commit()
-#             flash('Student added successfully!', 'success')
-#             return redirect(url_for('main.students'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f"An error occurred while adding the student: {str(e)}", "danger")
-
-#     return render_template('add_student.html', form=form)
-
 @main.route('/add_student', methods=['GET', 'POST'])
-@login_required  # Ensure the user is logged in
+@login_required
 def add_student():
     form = StudentForm()
 
@@ -616,17 +649,17 @@ def add_student():
 
     if not current_school: # Handle the case where the user has no school
         flash("You are not associated with any school. Please contact an administrator.", "warning")
-        return redirect(url_for('main.index')) # Or another appropriate route
+        return redirect(url_for('main.index'))
 
     # Populate class choices for the current user's school ONLY
     form.class_id.choices = [(cls.id, cls.class_name) for cls in Class.query.filter_by(school_id=current_school.id).all()]
     if not form.class_id.choices:
-        form.class_id.choices = [(-1, 'No classes available for your school')]  # More specific message
+        form.class_id.choices = [(-1, 'No classes available for your school')]
 
     # School should be pre-filled and disabled
     form.school_id.choices = [(current_school.id, current_school.name)]
-    form.school_id.data = current_school.id  # Set the current school ID
-    form.school_id.render_kw = {'readonly': True}  # Make the field read-only
+    form.school_id.data = current_school.id
+    form.school_id.render_kw = {'readonly': True}
 
 
     if form.validate_on_submit():
@@ -643,7 +676,7 @@ def add_student():
                 gender=form.gender.data,
                 grade_level=form.grade_level.data,
                 contact_email=form.contact_email.data,
-                school_id=current_school.id,  # Use the current user's school ID
+                school_id=current_school.id,
                 class_id=form.class_id.data
             )
             db.session.add(student)
@@ -663,17 +696,17 @@ def add_student():
 def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
 
-    if student.school_id != current_user.school_id:  # Check school association
+    if student.school_id != current_user.school_id:
         flash("You do not have permission to edit this student.", "danger")
         return redirect(url_for('main.students'))
 
-    form = StudentForm(obj=student)  # Pre-populate form with student data
+    form = StudentForm(obj=student)
 
     form.class_id.choices = [(cls.id, cls.class_name) for cls in Class.query.filter_by(school_id=student.school_id).all()]
     if not form.class_id.choices:
         form.class_id.choices = [(-1, 'No classes available for your school')]
 
-    form.school_id.choices = [(student.school_id, student.school.name)] # pre-select school and disable it
+    form.school_id.choices = [(student.school_id, student.school.name)]
     form.school_id.data = student.school_id
     form.school_id.render_kw = {'readonly': True}
 
@@ -703,12 +736,12 @@ def edit_student(student_id):
     return render_template('edit_student.html', form=form, student=student)
 
 
-@main.route('/delete_student/<int:student_id>', methods=['POST'])  # POST for security
+@main.route('/delete_student/<int:student_id>', methods=['POST'])
 @login_required
 def delete_student(student_id):
     student = Student.query.get_or_404(student_id)
 
-    if student.school_id != current_user.school_id:  # Check school association
+    if student.school_id != current_user.school_id:
         flash("You do not have permission to delete this student.", "danger")
         return redirect(url_for('main.students'))
 
@@ -722,24 +755,10 @@ def delete_student(student_id):
 
     return redirect(url_for('main.students'))
 
-# @main.route('/teachers', methods=['GET'])
-# def teachers():
-#     search_query = request.args.get('search', '').strip().lower()
-    
-#     if search_query:
-#         teachers = Teacher.query.filter(
-#             (Teacher.first_name.ilike(f"%{search_query}%")) |
-#             (Teacher.last_name.ilike(f"%{search_query}%")) |
-#             (Teacher.qualification.ilike(f"%{search_query}%")) |
-#             (Teacher.teacher_subjects.any(Subject.name.ilike(f"%{search_query}%")))
-#         ).all()
-#     else:
-#         teachers = Teacher.query.all()
-#     return render_template('teachers.html', teachers=teachers)
 
 
 @main.route('/teachers', methods=['GET'])
-@login_required  # Ensure the user is logged in
+@login_required
 def teachers():
     search_query = request.args.get('search', '').strip().lower()
 
@@ -763,63 +782,6 @@ def teachers():
 
     return render_template('teachers.html', teachers=teachers)
 
-# @main.route('/add_teacher', methods=['GET', 'POST'])
-# @login_required
-# def add_teacher():
-#     form = TeacherForm()
-
-#     # Populate choices
-#     form.school_id.choices = [(school.id, school.name) for school in School.query.all()]
-#     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.all()]
-
-#     if form.validate_on_submit():
-#         # Handle photo upload
-#         photo_filename = None
-#         if form.photo.data:
-#             photo_file = form.photo.data
-#             photo_filename = secure_filename(photo_file.filename)
-#             photo_path = os.path.join(Config.UPLOAD_FOLDER, photo_filename)
-#             os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-#             photo_file.save(photo_path)
-
-#         # Save the teacher's data
-#         teacher = Teacher(
-#             first_name=form.first_name.data,
-#             last_name=form.last_name.data,
-#             email=form.email.data,
-#             hire_date=form.hire_date.data,
-#             phone_number=form.phone_number.data,
-#             qualification=form.qualification.data,
-#             address=form.address.data,
-#             date_of_birth=form.date_of_birth.data,
-#             gender=form.gender.data,
-#             photo=photo_filename,
-#             school_id=form.school_id.data
-#         )
-#         db.session.add(teacher)
-#         db.session.commit()
-
-#         # Debugging: Check if the teacher is saved
-#         print(f"Teacher added: {teacher}")
-
-#         # Associate teacher with subjects
-#         try:
-#             for subject_id in form.subject.data:
-#                 teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
-#                 db.session.add(teacher_subject)
-#                 print(f"Added TeacherSubject: {teacher_subject}")
-#             db.session.commit()
-#         except Exception as e:
-#             db.session.rollback()
-#             print(f"Error adding TeacherSubject: {e}")
-#             flash("Failed to add subjects for the teacher.")
-#             return redirect(url_for('main.teachers'))
-
-#         flash('Teacher added successfully with photo and details!')
-#         return redirect(url_for('main.teachers'))
-
-#     return render_template('add_teacher.html', form=form)
-
 
 @main.route('/add_teacher', methods=['GET', 'POST'])
 @login_required
@@ -829,12 +791,12 @@ def add_teacher():
     current_school = current_user.school
     if not current_school:
         flash("You are not associated with any school.", "warning")
-        return redirect(url_for('main.index'))  # Or appropriate route
+        return redirect(url_for('main.index'))
 
     # Filter schools and subjects by the logged-in user's school
     form.school_id.choices = [(current_school.id, current_school.name)]
-    form.school_id.data = current_school.id  # Set the current school ID
-    form.school_id.render_kw = {'readonly': True}  # Make the field read-only
+    form.school_id.data = current_school.id
+    form.school_id.render_kw = {'readonly': True}
 
     form.subject.choices = [(subject.id, subject.name) for subject in Subject.query.filter_by(school_id=current_school.id).all()]
     if not form.subject.choices:
@@ -850,7 +812,7 @@ def add_teacher():
             photo_file = form.photo.data
             photo_filename = secure_filename(photo_file.filename)
             photo_path = os.path.join(Config.UPLOAD_FOLDER, photo_filename)
-            os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)  # Create directory if it doesn't exist
+            os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
             photo_file.save(photo_path)
 
         teacher = Teacher(
@@ -864,22 +826,22 @@ def add_teacher():
             date_of_birth=form.date_of_birth.data,
             gender=form.gender.data,
             photo=photo_filename,
-            school_id=current_school.id  # Use current_user.school_id
+            school_id=current_school.id
         )
 
         try:
             db.session.add(teacher)
-            db.session.commit()  # Commit *before* adding subjects to get teacher.id
+            db.session.commit()
 
-            if form.subject.data and form.subject.data[0] != -1: # Check if the user selected a subject
+            if form.subject.data and form.subject.data[0] != -1:
                 for subject_id in form.subject.data:
                     teacher_subject = TeacherSubject(teacher_id=teacher.id, subject_id=subject_id)
                     db.session.add(teacher_subject)
                 db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(f"An error occurred: {e}", "danger")  # More informative error message
-            return render_template('add_teacher.html', form=form) # Redirect to the same page to show the error
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('add_teacher.html', form=form)
         
         flash('Teacher added successfully!')
         return redirect(url_for('main.teachers'))
@@ -944,7 +906,12 @@ def add_class():
     teachers = Teacher.query.filter_by(school_id=current_user.school_id).all()
 
     # Populate form teacher_ids choices dynamically
-    form.teacher_ids.choices = [(teacher.id, f"{teacher.first_name} {teacher.last_name}") for teacher in teachers]
+    if teachers:
+        form.teacher_ids.choices = [(teacher.id, f"{teacher.first_name} {teacher.last_name}") for teacher in teachers]
+    else:
+        flash("No teachers are available for your school. Please add a teacher first.", "warning")
+        form.teacher_ids.choices = [(-1, "No teachers are available for your school. Please add a teacher first.")]
+        
 
     if form.validate_on_submit():
         # Create a new class instance
@@ -972,56 +939,6 @@ def add_class():
     return render_template('add_class.html', form=form)
 
 
-# @main.route('/classes')
-# @login_required
-# def classes():
-#     # Query classes, join teachers, and calculate student counts
-#     classes = db.session.query(
-#         Class,
-#         func.count(Student.id).label('student_count')
-#     ).outerjoin(Student, Student.class_id == Class.id) \
-#      .filter(Class.school_id == current_user.school_id) \
-#      .group_by(Class.id).options(joinedload('teachers')).all()
-
-#     return render_template('classes.html', classes=classes)
-
-
-# @main.route('/edit_class/<int:class_id>', methods=['GET', 'POST'])
-# def edit_class(class_id):
-#     # Fetch the class by ID
-#     class_to_edit = Class.query.get_or_404(class_id)
-
-#     if request.method == 'POST':
-#         # Update the class details
-#         class_to_edit.class_name = request.form['class_name']
-#         class_to_edit.class_category = request.form['class_category']
-        
-#         try:
-#             db.session.commit()
-#             flash('Class updated successfully!', 'success')
-#             return redirect(url_for('main.classes'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f'Error updating class: {str(e)}', 'danger')
-
-#     return render_template('edit_class.html', class_to_edit=class_to_edit)
-
-# @main.route('/delete_class/<int:class_id>', methods=['GET', 'POST'])
-# def delete_class(class_id):
-#     # Fetch the class by ID
-#     class_to_delete = Class.query.get_or_404(class_id)
-
-#     try:
-#         db.session.delete(class_to_delete)
-#         db.session.commit()
-#         flash('Class deleted successfully!', 'success')
-#     except Exception as e:
-#         db.session.rollback()
-#         flash(f'Error deleting class: {str(e)}', 'danger')
-
-#     return redirect(url_for('main.classes'))
-
-
 @main.route('/classes')
 @login_required
 def classes():
@@ -1043,18 +960,18 @@ def classes():
     return render_template('classes.html', classes=classes)
 
 @main.route('/edit_class/<int:class_id>', methods=['GET', 'POST'])
-@login_required  # Add login_required
+@login_required
 def edit_class(class_id):
     class_to_edit = Class.query.get_or_404(class_id)
 
-    if class_to_edit.school_id != current_user.school_id:  # Check school association
+    if class_to_edit.school_id != current_user.school_id:
         flash("You do not have permission to edit this class.", "danger")
         return redirect(url_for('main.classes'))
 
     if request.method == 'POST':
         class_to_edit.class_name = request.form['class_name']
         class_to_edit.class_category = request.form['class_category']
-        class_to_edit.class_level = request.form['class_level'] # Add this line
+        class_to_edit.class_level = request.form['class_level']
         try:
             db.session.commit()
             flash('Class updated successfully!', 'success')
@@ -1076,7 +993,7 @@ def delete_class(class_id):
 
     try:
         # SQLAlchemy should handle the association table automatically
-        db.session.delete(class_to_delete)  # Delete the class
+        db.session.delete(class_to_delete)
         db.session.commit()
         flash('Class deleted successfully!', 'success')
     except Exception as e:
@@ -1109,21 +1026,6 @@ def subjects():
     subjects = Subject.query.filter_by(school_id=current_user.school_id).all()
     return render_template('subjects.html', subjects=subjects)
 
-# Route to add a subject
-# @main.route('/add_subject', methods=['GET', 'POST'])
-# @login_required
-# def add_subject():
-#     form = SubjectForm()
-#     if form.validate_on_submit():
-#         subject = Subject(
-#             name=form.name.data,
-#             school_id=current_user.school_id
-#         )
-#         db.session.add(subject)
-#         db.session.commit()
-#         flash('Subject added successfully!')
-#         return redirect(url_for('main.subjects'))
-#     return render_template('add_subject.html', form=form)
 
 @main.route('/add_subject', methods=['GET', 'POST'])
 @login_required
@@ -1149,7 +1051,7 @@ def add_subject():
 
         # Create and save the new subject
         subject = Subject(
-            name=form.name.data.strip(),  # Remove accidental spaces
+            name=form.name.data.strip(),
             school_id=current_user.school_id
         )
         db.session.add(subject)
@@ -1169,6 +1071,8 @@ def assign_subject_to_class():
         (c.id, c.class_name)  # (value, label)
         for c in Class.query.filter_by(school_id=current_user.school_id).all()
     ]
+    if not form.class_id.choices:
+        form.class_id.choices = [(-1, "No classes are available for your school. Please add a class first.")]
 
     # Fetch all subjects for the current school
     subjects = Subject.query.filter_by(school_id=current_user.school_id).all()
@@ -1279,15 +1183,6 @@ def generate_assessment_report(assessment_id):
 
 
 # Route to list all assessment types
-# @main.route('/assessment_types')
-# @login_required
-# def assessment_types():
-#     if not current_user.role == 'admin':
-#         flash('Access denied!', 'danger')
-#         return redirect(url_for('main.index'))
-#     assessment_types = AssessmentType.query.all()
-#     return render_template('assessment_types.html', assessment_types=assessment_types)
-
 
 @main.route('/assessment_types')
 @login_required
@@ -1296,19 +1191,6 @@ def assessment_types():
         flash('Access denied!', 'danger')
         return redirect(url_for('main.index'))
 
-    # Option 1: Direct Relationship (Preferred if exists)
-    # Assumes you have a direct relationship like School.assessment_types
-    # and AssessmentType has a school_id or school relationship.
-    # if hasattr(current_user.school, 'assessment_types'): #Check if the relationship exists
-    #     assessment_types = current_user.school.assessment_types
-    # else:
-    #     flash('No Assessment Types found for this school', 'info')
-    #     assessment_types = []
-
-
-    # Option 2: Join and Filter (If no direct relationship)
-    # Use this if there's no direct School.assessment_types relationship
-    # but AssessmentType has a school_id.
     assessment_types = AssessmentType.query.filter(AssessmentType.school_id == current_user.school_id).all()
 
     return render_template('assessment_types.html', assessment_types=assessment_types)
@@ -1325,143 +1207,6 @@ def assessment_type():
     assessment_types = AssessmentType.query.all()
     
     return render_template('assessment_types.html', assessment_types=assessment_types)
-
-# Route to add an assessment type
-# @main.route('/add_assessment_type', methods=['GET', 'POST'])
-# @login_required
-# def add_assessment_type():
-#     form = AssessmentTypeForm()
-#     if not current_user.role == 'admin':
-#         flash('Access denied!', 'danger')
-#         return redirect(url_for('main.index'))
-#     if request.method == 'POST':
-#         name = request.form.get('name')
-#         if not name:
-#             flash('Assessment type name is required.', 'danger')
-#         else:
-#             new_type = AssessmentType(name=name)
-#             db.session.add(new_type)
-#             db.session.commit()
-#             flash('Assessment type added successfully!', 'success')
-#             return redirect(url_for('main.assessment_types'))
-#     return render_template('add_assessment_type.html', form=form)
-
-
-# @main.route('/add_assessment_type', methods=['GET', 'POST'])
-# @login_required
-# def add_assessment_type():
-#     form = AssessmentTypeForm()
-#     if not current_user.role == 'admin':
-#         flash('Access denied!', 'danger')
-#         return redirect(url_for('main.index'))
-
-#     if request.method == 'POST':
-#         name = request.form.get('name')
-#         school_id = request.form.get('school')
-
-#         if not name:
-#             flash('Assessment type name is required.', 'danger')
-#         elif not school_id:
-#             flash('School is required.', 'danger')
-#         else:
-#             try:
-#                 # Convert school_id to integer (important!)
-#                 school_id = int(school_id)
-#                 new_type = AssessmentType(name=name, school_id=school_id)
-#                 db.session.add(new_type)
-#                 db.session.commit()
-#                 flash('Assessment type added successfully!', 'success')
-#                 return redirect(url_for('main.assessment_types'))
-#             except ValueError:
-#                 flash('Invalid school ID.', 'danger')
-#             except Exception as e:
-#                 db.session.rollback()
-#                 flash(f'An error occurred: {str(e)}', 'danger')
-                
-#     return render_template('add_assessment_type.html', form=form)
-
-# @main.route('/add_assessment_type', methods=['GET', 'POST'])
-# @login_required
-# def add_assessment_type():
-#     # ... (rest of your code)
-#     form = AssessmentTypeForm()
-#     if not current_user.role == 'admin':
-#         flash('Access denied!', 'danger')
-#         return redirect(url_for('main.index'))
-
-#     if request.method == 'POST':
-#         name = request.form.get('name')
-#         school_id = request.form.get('school')
-
-#         # ... (validation for name and school_id)
-#         if not name:
-#             flash('Assessment type name is required.', 'danger')
-#         elif not school_id:
-#             flash('School is required.', 'danger')
-#         else:
-
-#             try:
-#                 school_id = int(school_id)
-
-#                 # Check if name already exists for this school
-#                 existing_type = AssessmentType.query.filter_by(name=name, school_id=school_id).first()
-
-#                 if existing_type:
-#                     flash('An assessment type with that name already exists for this school.', 'danger')  # Specific error message
-#                 else:
-#                     new_type = AssessmentType(name=name, school_id=school_id)
-#                     db.session.add(new_type)
-#                     db.session.commit()
-#                     flash('Assessment type added successfully!', 'success')
-#                     return redirect(url_for('main.assessment_types'))
-
-#             except ValueError:
-#                 flash('Invalid school ID.', 'danger')
-#             except Exception as e:
-#                 db.session.rollback()
-#                 flash(f'An error occurred: {str(e)}', 'danger')
-
-#     return render_template('add_assessment_type.html', form=form)
-
-# @main.route('/add_assessment_type', methods=['GET', 'POST'])
-# @login_required
-# def add_assessment_type():
-#     form = AssessmentTypeForm()
-
-#     # Restrict access to admins
-#     if current_user.role != 'admin':
-#         flash('Access denied!', 'danger')
-#         return redirect(url_for('main.index'))
-
-#     if request.method == 'POST':
-#         name = request.form.get('name')
-
-#         # Ensure name is provided
-#         if not name:
-#             flash('Assessment type name is required.', 'danger')
-#         else:
-#             try:
-#                 # Automatically link to the logged-in user's school
-#                 school_id = current_user.school_id  
-
-#                 # Check if the assessment type already exists for this specific school
-#                 existing_type = AssessmentType.query.filter_by(name=name, school_id=school_id).first()
-#                 print(existing_type)
-
-#                 if existing_type:
-#                     flash('An assessment type with this name already exists for your school.', 'warning')
-#                 else:
-#                     new_type = AssessmentType(name=name.strip(), school_id=school_id)  # Trim spaces
-#                     db.session.add(new_type)
-#                     db.session.commit()
-#                     flash('Assessment type added successfully!', 'success')
-#                     return redirect(url_for('main.assessment_types'))
-
-#             except Exception as e:
-#                 db.session.rollback()
-#                 flash(f'An error occurred: {str(e)}', 'danger')
-
-#     return render_template('add_assessment_type.html', form=form)
 
 @main.route('/add_assessment_type', methods=['GET', 'POST'])
 @login_required
@@ -1480,7 +1225,7 @@ def add_assessment_type():
             flash('Assessment type name is required.', 'danger')
         else:
             try:
-                school_id = current_user.school_id  # Automatically assign school
+                school_id = current_user.school_id
 
                 # Check if the assessment type exists for this school
                 existing_type = AssessmentType.query.filter_by(name=name, school_id=school_id).first()
@@ -1500,7 +1245,7 @@ def add_assessment_type():
     return render_template('add_assessment_type.html', form=form)
 
 
-@main.route('/edit_assessment_type/<int:assessment_type_id>', methods=['GET', 'POST'])  # Add GET method
+@main.route('/edit_assessment_type/<int:assessment_type_id>', methods=['GET', 'POST'])
 @login_required
 def edit_assessment_type(assessment_type_id):
     if not current_user.role == 'admin':
@@ -1509,15 +1254,15 @@ def edit_assessment_type(assessment_type_id):
 
     assessment_type = AssessmentType.query.get_or_404(assessment_type_id)
 
-    if request.method == 'GET':  # Handle GET request (display the form)
-        form = AssessmentTypeForm() # instantiate form
-        form.name.data = assessment_type.name  # Pre-populate the form
+    if request.method == 'GET':
+        form = AssessmentTypeForm()
+        form.name.data = assessment_type.name 
         return render_template('edit_assessment_type.html', assessment_type=assessment_type, form=form)
 
     if request.method == 'POST':
-        form = AssessmentTypeForm(request.form) # Get data from the form
-        if form.validate_on_submit(): # Validate the form
-            assessment_type.name = form.name.data # Update the name
+        form = AssessmentTypeForm(request.form)
+        if form.validate_on_submit():
+            assessment_type.name = form.name.data
             try:
                 db.session.commit()
                 flash('Assessment type updated successfully!', 'success')
@@ -1526,8 +1271,10 @@ def edit_assessment_type(assessment_type_id):
                 db.session.rollback()
                 flash(f'An error occurred: {str(e)}', 'danger')
         else:
-            flash('Error in form', 'danger') #Flash error if the form is not valid
-            return render_template('edit_assessment_type.html', assessment_type=assessment_type, form=form) #Render the form again with error
+            flash('Error in form', 'danger')
+            return render_template('edit_assessment_type.html',
+                                   assessment_type=assessment_type,
+                                   form=form)
 
 
 @main.route('/delete_assessment_type/<int:assessment_type_id>', methods=['GET', 'POST'])
@@ -1566,12 +1313,32 @@ def assessments():
 
     return render_template('assessments.html', assessments=all_assessments)
 
+
 @main.route('/add_assessment', methods=['GET', 'POST'])
 @login_required
 def add_assessment():
+    if not current_user.role == 'admin':
+        flash('You are not allowed to access this resource', 'danger')
+        return redirect(url_for('main.index'))
+
+    school = School.query.get(current_user.school_id)
+    if not school:
+        flash("School information not found.", "danger")
+        return redirect(url_for('main.index'))
+
     form = AssessmentForm()
-    form.assessment_type.choices = [(atype.id, atype.name) for atype in AssessmentType.query.all()]
-    form.class_id.choices = [(cls.id, cls.class_name) for cls in Class.query.all()]
+
+    if form:
+        form.assessment_type.choices = [(atype.id, atype.name) for atype in AssessmentType.query.all()]
+    else:
+        form.assessment_type.choices = [(-1, "No assessment types are available. Please add an assessment type first.")]
+        
+
+    form.class_id.choices = [
+        (cls.id, cls.class_name)
+        for cls in Class.query.filter_by(school_id=school.id).all()
+    ]
+
 
     if form.validate_on_submit():
         new_assessment = Assessment(
@@ -1580,7 +1347,8 @@ def add_assessment():
             assessment_type_id=form.assessment_type.data,
             class_id=form.class_id.data,
             academic_session=form.academic_session.data,
-            term=form.term.data
+            term=form.term.data,
+            school_id=school.id
         )
         db.session.add(new_assessment)
         db.session.commit()
@@ -1588,7 +1356,6 @@ def add_assessment():
         return redirect(url_for('main.assessments'))
 
     return render_template('add_assessment.html', form=form)
-
 
 @main.route('/edit_assessment/<int:assessment_id>', methods=['GET', 'POST'])
 @login_required
@@ -1622,60 +1389,6 @@ def delete_assessment(assessment_id):
     return redirect(url_for('main.assessments'))
 
 
-# @main.route('/assessment_subject_scores')
-# def assessment_subject_scores():
-#     # Get filter parameters from the request
-#     assessment_id = request.args.get('assessment')
-#     academic_session = request.args.get('academic_session')
-#     subject_id = request.args.get('subject')
-#     student_id = request.args.get('student')
-    
-
-#     # Base query
-#     query = db.session.query(
-#         AssessmentSubjectScore,
-#         Assessment.name.label('assessment_name'),
-#         Subject.name.label('subject_name'),
-#         Student.first_name,
-#         Student.last_name,
-#         AssessmentSubjectScore.total_marks,
-#         Assessment.academic_session
-#     ).join(
-#         Assessment, AssessmentSubjectScore.assessment_id == Assessment.id
-#     ).join(
-#         Subject, AssessmentSubjectScore.subject_id == Subject.id
-#     ).join(
-#         Student, AssessmentSubjectScore.student_id == Student.id
-#     )
-
-#     # Apply filters
-#     if assessment_id:
-#         query = query.filter(AssessmentSubjectScore.assessment_id == assessment_id)
-#     if academic_session:
-#         query = query.filter(Assessment.academic_session == academic_session)
-#     if subject_id:
-#         query = query.filter(AssessmentSubjectScore.subject_id == subject_id)
-#     if student_id:
-#         query = query.filter(AssessmentSubjectScore.student_id == student_id)
-
-#     # Fetch filtered results
-#     scores = query.all()
-
-#     # Fetch filter options
-#     assessments = Assessment.query.all()
-#     academic_sessions = db.session.query(Assessment.academic_session).distinct().all()
-#     subjects = Subject.query.all()
-#     students = Student.query.all()
-
-#     return render_template(
-#         'assessment_subject_scores.html',
-#         scores=scores,
-#         assessments=assessments,
-#         academic_sessions=[session[0] for session in academic_sessions],
-#         subjects=subjects,
-#         students=students
-#     )
-
 @main.route('/assessment_subject_scores')
 @login_required
 def assessment_subject_scores():
@@ -1684,7 +1397,7 @@ def assessment_subject_scores():
         flash("No school linked to your account.", "danger")
         return redirect(url_for('main.index'))
 
-    school_id = current_user.school_id  # Get logged-in user's school
+    school_id = current_user.school_id
 
     # Get filter parameters from the request
     assessment_id = request.args.get('assessment')
@@ -1730,71 +1443,112 @@ def assessment_subject_scores():
     subjects = Subject.query.filter_by(school_id=school_id).all()
     students = Student.query.filter_by(school_id=school_id).all()
 
+    if request.method == 'POST':
+        if 'edit_score' in request.form:
+            score_id = request.form.get('edit_score')
+            return redirect(url_for('main.edit_assessment_subject_score', score_id=score_id))
+        elif 'delete_score' in request.form:
+            score_id = request.form.get('delete_score')
+            score = AssessmentSubjectScore.query.get_or_404(score_id)
+            if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
+                flash("You don't have permission to delete this score.", "danger")
+                return redirect(url_for('main.assessment_subject_scores'))
+
+            try:
+                db.session.delete(score)
+                db.session.commit()
+                flash("Score deleted successfully.", "success")
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error deleting score: {str(e)}", "danger")
+            return redirect(url_for('main.assessment_subject_scores'))
+    
+    csrf_token = generate_csrf()
+
     return render_template(
         'assessment_subject_scores.html',
         scores=scores,
         assessments=assessments,
         academic_sessions=[session[0] for session in academic_sessions],
         subjects=subjects,
-        students=students
+        students=students,
+        csrf_token=csrf_token,
+        is_admin=current_user.role == 'admin'
     )
 
 
-# @main.route('/add_assessment_score', methods=['GET', 'POST'])
-# def add_assessment_score():
-#     if request.method == 'POST':
-#         try:
-#             # Fetch the data from the form
-#             academic_session = request.form.get('academic_session')
-#             assessment_id = int(request.form.get('assessment_id'))
-#             student_id = int(request.form.get('student_id'))
-#             class_id = int(request.form.get('class_id'))
+@main.route('/edit_assessment_subject_score/<int:score_id>', methods=['GET', 'POST'])
+@login_required
+def edit_assessment_subject_score(score_id):
+    score = AssessmentSubjectScore.query.get_or_404(score_id)
+    
+    # Ensure the user is linked to the correct school and is an admin
+    if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('main.assessment_subject_scores'))
 
-#             # Get the list of selected subjects (only subjects with checked checkboxes)
-#             selected_subject_ids = request.form.getlist('selected_subjects')
+    if request.method == 'POST':
+        try:
+            score.total_marks = request.form.get('total_marks')
+            db.session.commit()
+            flash("Assessment score updated successfully.", "success")
+            return redirect(url_for('main.assessment_subject_scores'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating score: {str(e)}", "danger")
 
-#             # Loop through the selected subjects and collect scores
-#             for subject_id in selected_subject_ids:
-#                 score_key = f"score_{subject_id}"
-#                 score_value = request.form.get(score_key)
+    return render_template('edit_assessment_subject_score.html', score=score)
 
-#                 if score_value:
-#                     try:
-#                         total_marks = int(score_value)
-#                         # Add score entry to the database
-#                         new_score = AssessmentSubjectScore(
-#                             assessment_id=assessment_id,
-#                             subject_id=int(subject_id),
-#                             student_id=student_id,
-#                             total_marks=total_marks
-#                         )
-#                         db.session.add(new_score)
-#                     except ValueError:
-#                         continue
 
-#             db.session.commit()
-#             flash("Assessment scores added successfully!", "success")
-#             return redirect(url_for('main.assessment_subject_scores'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f"Error adding assessment scores: {e}", "danger")
-#             return redirect(url_for('main.add_assessment_score'))
+@main.route('/delete_assessment_subject_score/<int:score_id>', methods=['POST'])
+@login_required
+def delete_assessment_subject_score(score_id):
+    score = AssessmentSubjectScore.query.get_or_404(score_id)
 
-#     # Fetch academic sessions, assessments, subjects, and students
-#     academic_sessions = list(set(assessment.academic_session for assessment in Assessment.query.all()))
-#     assessments = Assessment.query.all()
-#     subjects = Subject.query.all()
-#     students = Student.query.all()
-#     classes = Class.query.all()
+    # Check user authorization
+    if not current_user.role == 'admin':
+        return jsonify({"success": False, "message": "Unauthorized access."}), 403
+    
+    # Validate CSRF token
+    csrf_token = request.form.get('csrf_token')
+    if not csrf_token or csrf_token != session.get('_csrf_token'):
+        return jsonify({"success": False, "message": "Invalid CSRF token."}), 400
 
-#     return render_template(
-#         'add_assessment_subject_score.html',
-#         academic_sessions=academic_sessions,
-#         assessments=assessments,
-#         subjects=subjects,
-#         students=students,
-#         classes=classes
-#     )
+    try:
+        db.session.delete(score)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Assessment score deleted successfully."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"Error deleting score: {str(e)}"}), 500
+
+
+@main.route('/delete_multiple_assessment_subject_scores', methods=['POST'])
+@login_required
+def delete_multiple_assessment_subject_scores():
+    if not current_user.role == 'admin':
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('main.assessment_subject_scores'))
+
+    delete_ids = request.form.getlist('delete_ids')
+    
+    if not delete_ids:
+        flash("No scores selected for deletion.", "warning")
+        return redirect(url_for('main.assessment_subject_scores'))
+    
+    try:
+        for score_id in delete_ids:
+            score = AssessmentSubjectScore.query.get(score_id)
+            if score and score.student.school_id == current_user.school_id:
+                db.session.delete(score)
+        db.session.commit()
+        flash("Selected scores deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting scores: {str(e)}", "danger")
+    
+    return redirect(url_for('main.assessment_subject_scores'))
+
 
 @main.route('/add_assessment_score', methods=['GET', 'POST'])
 @login_required
@@ -1803,7 +1557,7 @@ def add_assessment_score():
         flash("You are not linked to any school.", "danger")
         return redirect(url_for('main.index'))
 
-    school_id = current_user.school_id  # Get the logged-in user's school ID
+    school_id = current_user.school_id
 
     if request.method == 'POST':
         try:
@@ -1877,75 +1631,6 @@ def add_assessment_score():
         classes=classes
     )
 
-@main.route('/assessment_subject_scores/edit/<int:id>', methods=['GET', 'POST'])
-def edit_assessment_subject_score(id):
-    # Fetch the record to be edited
-    score = AssessmentSubjectScore.query.get_or_404(id)
-
-    if request.method == 'POST':
-        # Update the score's fields from the form data
-        score.subject_id = request.form['subject_id']
-        score.total_marks = request.form['total_marks']
-
-        try:
-            db.session.commit()
-            flash('Assessment Subject Score updated successfully!', 'success')
-            return redirect(url_for('main.assessment_subject_scores'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error updating score: {str(e)}', 'danger')
-
-    # Fetch data for dropdowns
-    subjects = Subject.query.all()
-    assessments = Assessment.query.all()
-
-    return render_template(
-        'edit_assessment_subject_score.html',
-        score=score,
-        subjects=subjects,
-        assessments=assessments
-    )
-
-
-@main.route('/assessment_subject_scores/delete/<int:id>', methods=['POST'])
-def delete_assessment_subject_score(id):
-    score = AssessmentSubjectScore.query.get_or_404(id)
-
-    try:
-        db.session.refresh(score)  # Refresh the object from the database
-        db.session.delete(score)
-        db.session.commit()
-        flash('Assessment Subject Score deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting score: {str(e)}', 'danger')
-
-    return redirect(url_for('main.assessment_subject_scores'))
-
-
-@main.route('/assessment_subject_scores/delete', methods=['POST'])
-def delete_multiple_assessment_subject_scores():
-    selected_ids = request.form.getlist('delete_ids')
-    
-    if not selected_ids:
-        flash('No assessment scores selected for deletion.', 'warning')
-        return redirect(url_for('main.assessment_subject_scores'))
-    
-    try:
-        for score_id in selected_ids:
-            score = AssessmentSubjectScore.query.get(score_id)
-            if score:
-                db.session.delete(score)
-        
-        db.session.commit()
-        flash(f'Successfully deleted {len(selected_ids)} assessment score(s).', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting scores: {str(e)}', 'danger')
-    
-    return redirect(url_for('main.assessment_subject_scores'))
-
-
 
 # Route to view all subjects for a class
 @main.route('/class_subjects/<int:class_id>')
@@ -1954,6 +1639,7 @@ def class_subjects(class_id):
     class_instance = Class.query.get_or_404(class_id)
     subjects = ClassSubject.query.filter_by(class_id=class_id).all()
     return render_template('class_subjects.html', class_instance=class_instance, subjects=subjects)
+
 
 # Route to add a subject to a class
 @main.route('/add_class_subject/<int:class_id>', methods=['GET', 'POST'])
@@ -1980,7 +1666,10 @@ def add_class_subject(class_id):
     return render_template('add_class_subject.html', class_instance=class_instance, subjects=subjects)
 
 
+# Students results generation
 
+
+# calculate score grade of students
 def calculate_grade(total_score):
     if 70 <= total_score <= 100:
         return 'A', 'Excellent'
@@ -1992,299 +1681,312 @@ def calculate_grade(total_score):
         return 'D', 'Pass'
     else:
         return 'E', 'Weak'
+    
+
+"""
+DO NOT DELETE
+"""
+# Route for creating the result sheet
+# def create_student_result_pdf(student):
+#     buffer = BytesIO()
+#     pdf = SimpleDocTemplate(buffer, pagesize=A4)
+#     styles = getSampleStyleSheet()
+#     width, height = A4
+#     elements = []
+
+#     # --- Improved Styling ---
+#     # Create some custom paragraph styles for better control
+#     title_style = ParagraphStyle('Title', parent=styles['h1'])
+#     title_style.alignment = 1
+#     title_style.textColor = colors.red
+
+#     heading_style = ParagraphStyle('Heading', parent=styles['h2'])
+#     heading_style.alignment = 1
+    
+#     normal_style = ParagraphStyle('Normal', parent=styles['Normal'])
+#     normal_style.alignment = 0
+    
+#     # Retrieve logo path from DB
+#     logo_path = student.get("school_logo")
+#     # logo_path = student.school_logo
+#     background_logo_path = None
+
+#     if logo_path:
+#         if not logo_path.startswith("uploads/"):
+#             logo_path = f"uploads/{os.path.basename(logo_path)}"
+
+#         BASE_STATIC_DIR = os.path.join(os.getcwd(), "static")
+#         full_logo_path = os.path.join(BASE_STATIC_DIR, logo_path)
+#         full_logo_path = os.path.abspath(full_logo_path)
+
+#         # Use logo as page background image for the result sheet
+#         if os.path.exists(full_logo_path):
+#             background_logo_path = full_logo_path
+#             img = Image(full_logo_path, width=75, height=75, kind='proportional')
+#             elements.append(img)
+#         else:
+#             print(f"Logo file not found: {full_logo_path}")
+#             elements.append(Paragraph("School Logo Not Found", styles['Normal']))
+
+#     elements.append(Paragraph(student['school_name'], title_style))
+#     elements.append(Paragraph(student['school_address'], heading_style))
+#     elements.append(Paragraph("INDIVIDUAL STUDENT'S ASSESSMENT SHEET", heading_style))
+#     elements.append(Paragraph("JUNIOR SECONDARY SCHOOL", heading_style))
+
+#     # Student Details Table
+#     student_details_data = [
+#         ["RESULT ID:", student['result_id'], "SEX:", student['sex'], "TERM:", student['term']],
+#         ["NAME OF STUDENT:", student['name'], "SESSION:", student['session'], "CLASS:", student['class_name']],
+#         [
+#             Paragraph("NO. OF TIMES<br/>PRESENT", styles['Normal']),
+#             student['times_present'],
+#             Paragraph("NO. OF TIMES<br/>SCHOOL OPENED", styles['Normal']),
+#             student['times_opened'], "POSITION:", student['class_name']
+#         ],
+#     ]
+#     student_details_table = Table(student_details_data, colWidths=[120, 130, 60, 60, 80, 80])
+#     student_details_table.setStyle(TableStyle([
+#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+#         ('FONTSIZE', (0, 0), (-1, -1), 10),
+#         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+#         ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+#         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+#     ]))
+#     elements.append(student_details_table)
+#     elements.append(Spacer(1, 0.1*inch))  # Add space *after* student details table
 
 
-def create_student_result_pdf(student):
-    buffer = BytesIO()
-    pdf = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-    styles = getSampleStyleSheet()
+#     # Subject Data and Table
+#     subject_data = []
+#     grand_total = 0
+#     passes = 0
+#     for subject in student['subjects']:
+#         total_score = subject.get('CA1', 0) + subject.get('CA2', 0) + subject.get('EXAMINATION', 0)
+#         grade, remark = calculate_grade(total_score)
+#         grand_total += total_score
+#         if grade in ['A', 'B', 'C']:
+#             passes += 1
+#         subject_data.append([subject['name'],
+#                             subject.get('CA1', 0),
+#                             subject.get('CA2', 0),
+#                             subject.get('EXAMINATION', 0),
+#                             total_score, grade, remark])
 
-    # Title Section (with Logo and Colored School Name)
-    pdf.setFont("Helvetica-Bold", 14)
+#     overall_grade = calculate_grade(grand_total / len(student['subjects'])) if student['subjects'] else ("N/A", "N/A")
 
-    # School Logo (Top Left)
-    try:
-        logo_path = student.get("school_logo")  # Access from dictionary
-        if logo_path:
-            full_logo_path = os.path.join(Config.UPLOAD_FOLDER, logo_path)
-            if os.path.exists(full_logo_path):
-                img = ImageReader(full_logo_path)
-                pdf.drawImage(img, 50, 750, width=75, height=75, preserveAspectRatio=True)
-            else:
-                print(f"Logo file not found: {full_logo_path}")
-                pdf.drawString(50, 775, "School Logo Not Found")
-        else:
-            print("No logo path provided.")
-            pdf.drawString(50, 775, "No School Logo")
-    except Exception as e:
-        print(f"Error loading logo: {e}")
-        pdf.drawString(50, 775, "Error Loading Logo")
+#     student['overall_grade'] = overall_grade[0]
 
-    # School Name (Colored)
-    pdf.setFillColor(colors.red)
-    pdf.drawCentredString(width / 2, 800, student['school_name'])
-    pdf.setFillColor(colors.black)
+#     header_row_1 = [
+#         "SUBJECT",
+#         Paragraph("CONTINUOUS ASSESSMENT", styles["h3"]),
+#         Spacer(1, 1), Spacer(1, 1), Spacer(1, 1),
+#         Paragraph("TERM SUMMARY", styles["h3"]),
+#         Spacer(1, 1),
+#     ]
 
-    pdf.setFont("Helvetica", 12)
-    pdf.drawCentredString(width / 2, 780, student['school_address'])
-    pdf.drawCentredString(width / 2, 760, "INDIVIDUAL STUDENT'S ASSESSMENT SHEET")
-    pdf.drawCentredString(width / 2, 740, "JUNIOR SECONDARY SCHOOL")
+#     header_row_2 = ["SUBJECT", "CA1", "CA2", "EXAMINATION", "TOTAL", "GRADE", "REMARK"]
+#     full_subject_data = [header_row_1, header_row_2] + subject_data
 
-    student_details_data = [
-        ["RESULT ID:", student['result_id'], "SEX:", student['sex'], "TERM:", student['term']],
-        ["NAME OF STUDENT:", student['name'], "SESSION:", student['session'], "CLASS:", student['class_name']],
-        [
-            Paragraph("NO. OF TIMES<br/>PRESENT", styles['Normal']),
-            student['times_present'],
-            Paragraph("NO. OF TIMES<br/>SCHOOL OPENED", styles['Normal']),
-            student['times_opened'], "POSITION:", student['class_name']
-        ],
-    ]
+#     subject_table = Table(full_subject_data, colWidths=[150, 50, 50, 80, 50, 50, 100])
+#     subject_table.setStyle(TableStyle([
+#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+#         ('FONTSIZE', (0, 0), (-1, -1), 10),
+#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+#         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+#         # ('BACKGROUND', (1, 2), (4, -1), colors.beige),
+#         # ('BACKGROUND', (5, 2), (6, -1), colors.beige),
+#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+#         ('BACKGROUND', (1, 0), (4, 0), colors.lightgrey),
+#         ('BACKGROUND', (5, 0), (6, 0), colors.lightgrey),
+#         ('SPAN', (1, 0), (4, 0)),
+#         ('SPAN', (5, 0), (6, 0)),
+#         ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),
 
-    col_widths = [120, 130, 60, 60, 80, 80]
-    student_details_table = Table(student_details_data, colWidths=col_widths)
+#     ]))
 
-    student_details_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-    ]))
+#     elements.append(subject_table)  # Add to elements list
+#     elements.append(Spacer(1, 0.1*inch))  # Add space *after* subject table
 
-    student_details_table.wrapOn(pdf, width, height)
-    student_details_table.drawOn(pdf, 30, 630)
 
-    subject_data = []
-    grand_total = 0
-    passes = 0
+#     # Summary and Grading Key Tables
+#     term_average = grand_total / len(student['subjects']) if student['subjects'] else 0
 
-    for subject in student['subjects']:
-        total_score = subject.get('CA1', 0) + subject.get('CA2', 0) + subject.get('EXAMINATION', 0)
-        grade, remark = calculate_grade(total_score)
-        grand_total += total_score
-        if grade in ['A', 'B', 'C']:
-            passes += 1
-        subject_data.append([subject['name'], subject.get('CA1', 0), subject.get('CA2', 0), subject.get('EXAMINATION', 0), total_score, grade, remark])
+#     summary_data = [
+#         ["Term Grand Total:", str(grand_total)],
+#         ["Term Average:", f"{term_average:.2f}"],
+#         ["Number of Subject Passes:", str(passes)],
+#         ["Overall Grade:", student.get("overall_grade", "N/A")],
+#     ]
+#     summary_table = Table(summary_data, colWidths=[150, 80])
+#     summary_table.setStyle(TableStyle([
+#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+#         ('FONTSIZE', (0, 0), (-1, -1), 10),
+#         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+#         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+#     ]))
 
-    overall_grade = calculate_grade(grand_total / len(student['subjects']))
-    student['overall_grade'] = overall_grade[0]
+#     grading_key_data = [
+#         ["Figures", "Grade", "Remark"],
+#         ["70 - 100", "A", "Excellent"],
+#         ["60 - 69", "B", "Very Good"],
+#         ["50 - 59", "C", "Good"],
+#         ["45 - 49", "D", "Pass"],
+#         ["0 - 44", "E", "Weak"],
+#     ]
 
-    header_row_1 = [
-        "SUBJECT",
-        Paragraph("CONTINUOUS ASSESSMENT", styles["h3"]),
-        Spacer(1, 1), Spacer(1, 1), Spacer(1, 1),
-        Paragraph("TERM SUMMARY", styles["h3"]),
-        Spacer(1, 1),
-    ]
+#     grading_key_table = Table(grading_key_data, colWidths=[80, 60, 80])
+#     grading_key_table.setStyle(TableStyle([
+#         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+#         ('FONTSIZE', (0, 0), (-1, -1), 10),
+#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+#         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+#     ]))
 
-    header_row_2 = ["SUBJECT", "CA1", "CA2", "EXAMINATION", "TOTAL", "GRADE", "REMARK"]
-    full_subject_data = [header_row_1, header_row_2] + subject_data
 
-    row_heights = [20, 20] + [20] * len(subject_data)
-    subject_table = Table(full_subject_data, colWidths=[150, 50, 50, 80, 50, 50, 100], rowHeights=row_heights)
+#     # --- Positioning the tables using Spacer and nested tables ---
+#     # Create a nested table to hold summary and grading key side-by-side
+#     nested_table_data = [[summary_table, grading_key_table]]
+#     nested_table = Table(nested_table_data, colWidths=[250, 250]) # Adjust colWidths as needed
+#     nested_table.setStyle(TableStyle([
+#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Center the nested tables
+#         ('VALIGN', (0, 0), (-1, -1), 'TOP'),    # Align tables to the top
+#     ]))
 
-    subject_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BACKGROUND', (1, 2), (4, -1), colors.beige),
-        ('BACKGROUND', (5, 2), (6, -1), colors.beige),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BACKGROUND', (1, 0), (4, 0), colors.lightgrey),
-        ('BACKGROUND', (5, 0), (6, 0), colors.lightgrey),
-        ('SPAN', (1, 0), (4, 0)),
-        ('SPAN', (5, 0), (6, 0)),
-        ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),
-    ]))
+#     # elements.append(Spacer(20, 1*inch))  # Add some space before the tables
+#     elements.append(nested_table) # add the nested table
+#     elements.append(Spacer(1, 0.5*inch))  # Add space after tables
 
-    student_details_table.wrapOn(pdf, width, height)
-    student_details_table_height = student_details_table._height
-    subject_table_y_position = 390 - student_details_table_height - 20
 
-    subject_table.wrapOn(pdf, width, height)
-    subject_table.drawOn(pdf, 30, subject_table_y_position)
-
-    term_average = grand_total / len(student['subjects']) if student['subjects'] else 0
-
-    summary_data = [
-        ["Term Grand Total:", str(grand_total)],
-        ["Term Average:", f"{term_average:.2f}"],
-        ["Number of Subject Passes:", str(passes)],
-        ["Overall Grade:", student.get("overall_grade", "N/A")],
-    ]
-
-    grading_key_data = [
-        ["Figures", "Grade", "Remark"],
-        ["70 - 100", "A", "Excellent"],
-        ["60 - 69", "B", "Very Good"],
-        ["50 - 59", "C", "Good"],
-        ["45 - 49", "D", "Pass"],
-        ["0 - 44", "E", "Weak"],
-    ]
-
-    summary_table = Table(summary_data, colWidths=[150, 80])
-    grading_key_table = Table(grading_key_data, colWidths=[80, 60, 80])
-
-    summary_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-    ]))
-
-    grading_key_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-    ]))
-
-    summary_table.wrapOn(pdf, width, height)
-    summary_table.drawOn(pdf, 30, 180)
-
-    grading_key_table.wrapOn(pdf, width, height)
-    grading_key_table.drawOn(pdf, 300, 160)
-
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(50, 120, "Class Teacher Remark: __________________________")
-    pdf.drawString(50, 100, "Principal Remark: __________________________")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawCentredString(width / 2, 62, "____________________________")
-    pdf.drawCentredString(width / 2, 50, "PRINCIPAL'S SIGNATURE")
-
-    pdf.save()
-    buffer.seek(0)
-    return buffer
+#     # --- Remarks and Signature ---
+#     elements.append(Paragraph("Class Teacher Remark: __________________________", styles['Normal']))
+#     elements.append(Paragraph("Principal Remark: __________________________", styles['Normal']))
+#     elements.append(Spacer(1, 0.5*inch))  # Add space before the signature
 
 
 
+#     # Create a centered style (or modify an existing one)
+#     centered_style = ParagraphStyle('Centered', parent=styles['Normal'])  # Inherit from Normal
+#     centered_style.alignment = TA_CENTER
 
-@main.route('/download_result_sheet/<int:student_id>')
-def download_result_sheet(student_id):
-    try:
-        student_record = Student.query.filter_by(id=student_id).first()
-        if not student_record:
-            return jsonify({"error": "Student not found"}), 404
+#     signature_text = "____________________________"  # Or get it dynamically
+#     signature_line = "PRINCIPAL'S SIGNATURE"  # Or get it dynamically
 
-        school_record = School.query.filter_by(id=student_record.school_id).first()
-        if not school_record:
-            return jsonify({"error": "School not found"}), 404
-
-        subjects = AssessmentSubjectScore.query.filter_by(student_id=student_id).all()
-        print(f"Subjects for student {student_id}: {subjects}")  # Debug log
-
-        assessments = Assessment.query.filter_by(class_id=student_record.class_id).all()
-        print(f"Assessments for class {student_record.class_id}: {assessments}")  # Debug log
-
-        attendance_records = Attendance.query.filter_by(student_id=student_id).all()
-        print(f"Attendance Records for student {student_id}: {attendance_records}")  # Debug log
-
-        times_present = sum(1 for record in attendance_records if record.days_present == 'present')
-        times_opened = len(attendance_records)
-
-        subject_scores = {}
-        for subject_score in subjects:
-            subject_name = subject_score.subject.name
-            if subject_name not in subject_scores:
-                subject_scores[subject_name] = {'CA1': 0, 'CA2': 0, 'EXAMINATION': 0}
-
-            for assessment in assessments:
-                if assessment.id == subject_score.assessment_id:
-                    print(f"Assessment Name: {assessment.name}, Marks: {subject_score.total_marks}")  # Debug log
-                    if 'CA1' in assessment.name:
-                        subject_scores[subject_name]['CA1'] = subject_score.total_marks
-                    elif 'CA2' in assessment.name:
-                        subject_scores[subject_name]['CA2'] = subject_score.total_marks
-                    elif 'EXAMINATION' in assessment.name:
-                        subject_scores[subject_name]['EXAMINATION'] = subject_score.total_marks
-
-        print(f"Subject Scores: {subject_scores}")  # Debug log
-
-        grand_total = sum(sum(scores.values()) for scores in subject_scores.values())
-        print(f"Grand Total: {grand_total}")  # Debug log
-
-        student = {
-            "result_id": student_record.id,
-            "name": f"{student_record.first_name} {student_record.last_name}",
-            "sex": student_record.gender,
-            "term": assessments[0].term if assessments else "N/A",
-            "session": assessments[0].academic_session if assessments else "N/A",
-            "times_present": times_present,
-            "times_opened": times_opened,
-            "class_name": student_record.class_.class_name,
-            "subjects": [
-                {
-                    "name": subject,
-                    "CA1": scores['CA1'],
-                    "CA2": scores['CA2'],
-                    "EXAMINATION": scores['EXAMINATION']
-                }
-                for subject, scores in subject_scores.items()
-            ],
-            "grand_total": grand_total,
-            "overall_grade": "A",
-            "next_term": "2023-09-01",
-            "school_name": school_record.name,
-            "school_address": school_record.address,
-            "school_logo": school_record.school_logo  # Add this line
-        }
-
-        pdf_buffer = create_student_result_pdf(student)
-        return send_file(
-            pdf_buffer,
-            as_attachment=True,
-            download_name=f"{student['name']}_result.pdf",
-            mimetype='application/pdf'
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+#     elements.append(Paragraph(signature_text, centered_style))  # Use the centered style
+#     elements.append(Spacer(1, 0.1*inch))
+#     elements.append(Paragraph(signature_line, centered_style))  # Use the centered style
 
 
-# @main.route('/assign_teachers', methods=['GET', 'POST'])
-# @login_required
-# def assign_teachers():
-#     # Create the form
-#     form = AssignTeachersForm()
+#     # Build PDF with background image
+#     def add_background(canvas, doc):
+#         if background_logo_path:
+#             bg_image = ImageReader(background_logo_path)
+#             canvas.setFillAlpha(0.2)  # Set transparency
+#             canvas.drawImage(bg_image, 100, 200, width=400, height=400, preserveAspectRatio=True, mask='auto')
+#             canvas.setFillAlpha(1)  # Reset transparency
 
-#     # Get the classes and teachers for the current school
-#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
-#     teachers = Teacher.query.filter_by(school_id=current_user.school_id).all()
+#     pdf.build(elements, onFirstPage=add_background, onLaterPages=add_background)
+#     buffer.seek(0)
 
-#     # Populate the form choices dynamically
-#     form.class_id.choices = [(cls.id, cls.class_name) for cls in classes]
-#     form.teacher_ids.choices = [(teacher.id, f"{teacher.first_name} {teacher.last_name}") for teacher in teachers]
-
-#     if form.validate_on_submit():
-#         class_id = form.class_id.data
-#         selected_teacher_ids = form.teacher_ids.data
-
-#         # Fetch the class and selected teachers
-#         selected_class = Class.query.get(class_id)
-#         selected_teachers = Teacher.query.filter(Teacher.id.in_(selected_teacher_ids)).all()
-
-#         # Clear existing teachers to avoid duplicates
-#         selected_class.teachers = []
-
-#         # Add new teachers to the class
-#         selected_class.teachers.extend(selected_teachers)
-
-#         try:
-#             db.session.commit()
-#             flash('Teachers assigned successfully!', 'success')
-#             return redirect(url_for('main.classes'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f'Error assigning teachers: {str(e)}', 'danger')
+#     return buffer
 
 
-#     return render_template('assign_teachers.html', form=form)
+# @main.route('/download_result_sheet/<int:student_id>')
+# def download_result_sheet(student_id):
+#     try:
+#         student_record = Student.query.filter_by(id=student_id, school_id=current_user.school_id).first()  # Filter by school
+#         if not student_record:
+#             return jsonify({"error": "Student not found or does not belong to your school"}), 404
+
+#         school_record = School.query.filter_by(id=student_record.school_id).first()  # No change needed here, already filtered above
+#         if not school_record:
+#             return jsonify({"error": "School not found"}), 404
+
+#         # Get class subjects for the student's class and the current school
+#         class_subjects = ClassSubject.query.filter_by(class_id=student_record.class_id).all()
+#         subjects = [cs.subject for cs in class_subjects if cs.subject.school_id == current_user.school_id]
+
+
+#         if not subjects:
+#             return jsonify({"error": "No subjects found for this class in your school."}), 404
+
+#         assessments = Assessment.query.filter_by(class_id=student_record.class_id, school_id=current_user.school_id).all() # Filter by school
+
+#         attendance_records = Attendance.query.filter_by(student_id=student_id).all()
+
+#         times_present = sum(1 for record in attendance_records if record.days_present == 'present')
+#         times_opened = len(attendance_records)
+
+#         subject_scores = {}
+#         for subject in subjects: # Iterate through the actual subjects, not the subject_scores
+#             subject_name = subject.name
+#             subject_scores[subject_name] = {'CA1': 0, 'CA2': 0, 'EXAMINATION': 0}
+
+#             for assessment in assessments:
+#                 # Find the corresponding SubjectScore for this assessment and subject
+#                 subject_score = AssessmentSubjectScore.query.filter_by(
+#                     assessment_id=assessment.id,
+#                     student_id=student_id,
+#                     subject_id=subject.id # Add subject id to the query
+#                 ).first()
+
+#                 if subject_score:
+#                     if 'CA1' in assessment.name:
+#                         subject_scores[subject_name]['CA1'] = subject_score.total_marks
+#                     elif 'CA2' in assessment.name:
+#                         subject_scores[subject_name]['CA2'] = subject_score.total_marks
+#                     elif 'EXAMINATION' in assessment.name:
+#                         subject_scores[subject_name]['EXAMINATION'] = subject_score.total_marks
+
+#         grand_total = sum(sum(scores.values()) for scores in subject_scores.values())
+
+#         student = {
+#             "result_id": student_record.id,
+#             "name": f"{student_record.first_name} {student_record.last_name}",
+#             "sex": student_record.gender,
+#             "term": assessments[0].term if assessments else "N/A",
+#             "session": assessments[0].academic_session if assessments else "N/A",
+#             "times_present": times_present,
+#             "times_opened": times_opened,
+#             "class_name": student_record.class_.class_name,
+#             "subjects": [
+#                 {
+#                     "name": subject,
+#                     "CA1": scores['CA1'],
+#                     "CA2": scores['CA2'],
+#                     "EXAMINATION": scores['EXAMINATION']
+#                 }
+#                 for subject, scores in subject_scores.items()
+#             ],
+#             "grand_total": grand_total,
+#             "overall_grade": "A", # You'll need logic to calculate this
+#             "next_term": "2023-09-01", # You'll need logic to determine this
+#             "school_name": school_record.name,
+#             "school_address": school_record.address,
+#             "school_logo": school_record.school_logo
+#         }
+
+#         pdf_buffer = create_student_result_pdf(student)
+#         return send_file(
+#             pdf_buffer,
+#             as_attachment=True,
+#             download_name=f"{student['name']}_result.pdf",
+#             mimetype='application/pdf'
+#         )
+#     except Exception as e:
+#         print(f"Error in download_result_sheet: {e}") # Keep this for debugging
+#         return jsonify({"error": str(e)}), 500
+
+# @main.route('/download_result')
+# def download_result_page():
+#     return render_template('download_result.html')
+
+"""
+DO NOT DELETE ABOVE CODE
+"""
+
 
 
 @main.route('/assign_teachers', methods=['GET', 'POST'])
@@ -2300,6 +2002,11 @@ def assign_teachers():
     # Filter classes and teachers by the logged-in user's school
     classes = Class.query.filter_by(school_id=current_school.id).all()
     teachers = Teacher.query.filter_by(school_id=current_school.id).all()
+
+    if not classes:
+        flash("No classes available. Add a class first.", "warning")
+    if not teachers:
+        flash("No teachers available. Add a teacher first.", "warning")
 
     form.class_id.choices = [(cls.id, cls.class_name) for cls in classes]
     form.teacher_ids.choices = [(teacher.id, f"{teacher.first_name} {teacher.last_name}") for teacher in teachers]
@@ -2356,12 +2063,6 @@ with open("fee_components.json", "w") as file:
     json.dump(fee_components, file, indent=4)
 
 
-# @main.route('/fee_components')
-# def fee_components():
-#     # Fetch all fee components from the database
-#     components = FeeComponent.query.all()
-#     return render_template('fee_components.html', components=components)
-
 @main.route('/fee_components')
 @login_required
 def fee_components():
@@ -2382,91 +2083,6 @@ def fee_components():
 with open("fee_components.json", "r") as file:
     fee_components_from_json = json.load(file)
 
-
-# @main.route('/add_fee_component', methods=['GET', 'POST'])
-# def add_fee_component():
-#     if request.method == 'POST':
-#         # Get form data
-#         name = request.form['name']
-#         description = request.form['description']
-#         school_id = request.form['school_id']
-
-#         # Create a new FeeComponent
-#         component = FeeComponent(
-#             name=name,
-#             description=description,
-#             school_id=school_id
-#         )
-#         db.session.add(component)
-#         db.session.commit()
-#         flash('Fee component added successfully!', 'success')
-#         return redirect(url_for('main.fee_components'))
-
-#     # Fetch all schools for the dropdown
-#     schools = School.query.all()
-#     return render_template('add_fee_component.html', schools=schools)
-
-
-
-# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
-# def add_fee_component_to_class():
-#     if request.method == 'POST':
-#         # Get the list of selected class IDs
-#         selected_classes = request.form.getlist('selected_classes')
-
-#         # Get the list of selected component IDs
-#         selected_components = request.form.getlist('selected_components')
-
-#         # Loop through all selected classes and fee components
-#         for class_id in selected_classes:
-#             for component_id in selected_components:
-#                 # Get the amount for the selected component
-#                 amount_field = f"amount_{component_id}"
-#                 if amount_field in request.form and request.form[amount_field]:
-#                     amount = float(request.form[amount_field])
-
-#                     # Add the fee component to the database for the current class
-#                     class_fee_component = ClassFeeComponent(
-#                         class_id=int(class_id),
-#                         component_id=int(component_id),
-#                         amount=amount
-#                     )
-#                     db.session.add(class_fee_component)
-
-#         # Commit all changes to the database
-#         db.session.commit()
-#         flash('Selected fee components added to the selected classes successfully!', 'success')
-#         return redirect(url_for('main.view_class_fees', class_id=class_id))  # Adjust the redirect as needed
-    
-#     # Fetch all classes and fee components for the form
-#     classes = Class.query.all()
-#     components = FeeComponent.query.all()
-#     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
-
-
-# @main.route('/edit_fee_component/<int:id>', methods=['GET', 'POST'])
-# def edit_fee_component(id):
-#     component = FeeComponent.query.get_or_404(id)
-#     if request.method == 'POST':
-#         # Update the fee component
-#         component.name = request.form['name']
-#         component.description = request.form['description']
-#         component.school_id = request.form['school_id']
-#         db.session.commit()
-#         flash('Fee component updated successfully!', 'success')
-#         return redirect(url_for('main.fee_components'))
-
-#     # Fetch all schools for the dropdown
-#     schools = School.query.all()
-#     return render_template('edit_fee_component.html', component=component, schools=schools)
-
-# @main.route('/delete_fee_component/<int:id>', methods=['POST'])
-# def delete_fee_component(id):
-#     component = FeeComponent.query.get_or_404(id)
-#     db.session.delete(component)
-#     db.session.commit()
-#     flash('Fee component deleted successfully!', 'success')
-#     return redirect(url_for('main.fee_components'))
 
 @main.route('/add_fee_component', methods=['GET', 'POST'])
 @login_required  # Protect the route
@@ -2497,115 +2113,6 @@ def add_fee_component():
     return render_template('add_fee_component.html', schools=schools)
 
 
-
-# @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
-# @login_required
-# def add_fee_component_to_class():
-#     if request.method == 'POST':
-#         selected_classes = request.form.getlist('selected_classes')
-#         selected_components = request.form.getlist('selected_components')
-
-#         for class_id in selected_classes:
-#             for component_id in selected_components:
-#                 amount_field = f"amount_{component_id}"
-#                 if amount_field in request.form and request.form[amount_field]:
-#                     amount = float(request.form[amount_field])
-
-#                     # Verify that the class belongs to the user's school
-#                     class_obj = Class.query.get(class_id)
-#                     if class_obj and class_obj.school_id == current_user.school_id: #Added check to ensure the class belongs to the logged in user's school
-#                         class_fee_component = ClassFeeComponent(
-#                             class_id=int(class_id),
-#                             component_id=int(component_id),
-#                             amount=amount
-#                         )
-#                         db.session.add(class_fee_component)
-#                     else:
-#                         flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')  # Or handle the error as you see fit.
-#                         return redirect(url_for('main.add_fee_component_to_class')) # Redirect back to the form
-
-#         db.session.commit()
-#         flash('Selected fee components added to the selected classes successfully!', 'success')
-#         # You'll need to determine the correct redirect.  Perhaps a view for a specific class's fees?
-#         return redirect(url_for('main.fee_components'))  # Or a more appropriate redirect
-
-#     # Filter classes and components by school
-#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
-#     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
-#     return render_template('add_fee_component_to_class.html', classes=classes, components=components)
-
-# @main.route('/add_fee_component_to_class', methods=['GET', 'POST']) # This route will handle the POST request
-# @login_required
-# def add_fee_component_to_class():
-#     if request.method == 'POST':
-#         selected_classes = request.form.getlist('selected_classes')
-#         selected_components = request.form.getlist('selected_components')
-#         academic_year = request.form['academic_year']
-#         term = request.form['term']
-
-
-#         # make it possible for selection of academic year
-
-#         for class_id in selected_classes:
-#             for component_id in selected_components:
-#                 amount_field = f"amount_{component_id}"
-#                 if amount_field in request.form and request.form[amount_field]:
-#                     amount = float(request.form[amount_field])
-
-#                     class_obj = Class.query.get(class_id)
-#                     if class_obj and class_obj.school_id == current_user.school_id:
-#                         component = FeeComponent.query.get(component_id)
-#                         if component:
-#                             # Check if a fee component with the same name, academic year, and term already exists for the class
-#                             existing_fee = ClassFeeComponent.query.join(FeeComponent).filter(
-#                                 ClassFeeComponent.class_id == class_id,
-#                                 FeeComponent.name == component.name,
-#                                 FeeComponent.academic_year == academic_year,
-#                                 FeeComponent.term == term
-#                             ).first()
-
-#                             if existing_fee:
-#                                 # Update the existing fee
-#                                 existing_fee.amount = amount
-#                             else:
-#                                 # Create a new fee component
-#                                 fee_component = FeeComponent(
-#                                     name=component.name,
-#                                     description=component.description,
-#                                     school_id=current_user.school_id,
-#                                     academic_year=academic_year,
-#                                     term=term
-#                                 )
-#                                 db.session.add(fee_component)
-#                                 db.session.flush() # Get the ID for the new fee_component
-#                                 class_fee_component = ClassFeeComponent(
-#                                     class_id=int(class_id),
-#                                     component_id=fee_component.id, # Use fee_component.id
-#                                     amount=amount
-#                                 )
-#                                 db.session.add(class_fee_component)
-#                         else:
-#                             flash(f"Error: Fee component with ID {component_id} not found.", 'danger')
-#                             return redirect(url_for('main.add_fee_component_to_class'))
-#                     else:
-#                         flash(f"Error: Class with ID {class_id} does not belong to your school.", 'danger')
-#                         return redirect(url_for('main.add_fee_component_to_class'))
-
-#         db.session.commit()
-#         flash('Selected fee components added to the selected classes successfully!', 'success')
-#         return redirect(url_for('main.generate_fees'))
-
-#     academic_years = [
-#         year.academic_year
-#         for year in db.session.query(FeeComponent.academic_year).filter_by(school_id=current_user.school_id).distinct().all()
-#     ]
-
-#     # Fetch all classes and fee components for the form
-#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
-#     components = FeeComponent.query.filter_by(school_id=current_user.school_id).all()
-#     return render_template('add_fee_component_to_class.html', classes=classes, components=components, academic_years=academic_years)
-
-
 @main.route('/add_fee_component_to_class', methods=['GET', 'POST'])
 @login_required
 def add_fee_component_to_class():
@@ -2631,26 +2138,27 @@ def add_fee_component_to_class():
                     if class_obj and class_obj.school_id == current_user.school_id:
                         component = FeeComponent.query.get(component_id)
                         if component and component.school_id == current_user.school_id:
-                            # Check if a ClassFeeComponent entry *already exists* for this class, component, year, and term
+
                             existing_class_fee = ClassFeeComponent.query.join(FeeComponent).filter(
                                 ClassFeeComponent.class_id == class_id,
-                                FeeComponent.id == component_id,  # Filter by component ID
+                                FeeComponent.id == component_id,
                                 FeeComponent.academic_year == academic_year,
                                 FeeComponent.term == term,
                                 FeeComponent.school_id == current_user.school_id
                             ).first()
 
                             if existing_class_fee:
-                                # Update the existing ClassFeeComponent
+                                # Update existing ClassFeeComponent
                                 existing_class_fee.amount = amount
                             else:
-                                # Create a new ClassFeeComponent ONLY (no new FeeComponent)
+                                # Create a *new* ClassFeeComponent for the class and existing FeeComponent
                                 class_fee_component = ClassFeeComponent(
                                     class_id=int(class_id),
-                                    component_id=int(component_id),  # Use the existing component ID
+                                    component_id=int(component_id),  # Use existing component ID
                                     amount=amount
                                 )
-                                db.session.add(class_fee_component)
+                                db.session.add(class_fee_component)  # Add the NEW ClassFeeComponent
+
                         else:
                             flash(f"Error: Fee component with ID {component_id} not found or doesn't belong to your school.", 'danger')
                             return redirect(url_for('main.add_fee_component_to_class'))
@@ -2659,9 +2167,9 @@ def add_fee_component_to_class():
                         return redirect(url_for('main.add_fee_component_to_class'))
 
         db.session.commit()
-        flash('Fee components added/updated successfully!', 'success')  # More accurate message
+        flash('Fee components added/updated successfully!', 'success')
         return redirect(url_for('main.generate_fees'))
-
+    
     # GET request handling (same as before)
     academic_years = [
         year.academic_year
@@ -2672,6 +2180,7 @@ def add_fee_component_to_class():
     classes = Class.query.filter_by(school_id=school.id).all()
     components = FeeComponent.query.filter_by(school_id=school.id).all()
     return render_template('add_fee_component_to_class.html', classes=classes, components=components, academic_years=academic_years)
+
 
 @main.route('/edit_fee_component/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -2707,28 +2216,6 @@ def delete_fee_component(id):
     flash('Fee component deleted successfully!', 'success')
     return redirect(url_for('main.fee_components'))
 
-# @main.route('/student_fees')
-# def student_fees():
-#     # Fetch all student fees
-#     fees = StudentFee.query.all()
-#     return render_template('view_fees.html', fees=fees)
-
-    # fees = StudentFee.query.filter_by(school_id=current_user.school_id).all()
-
-# @main.route('/student_fees')
-# @login_required
-# def student_fees():
-#     # Ensure the user is linked to a school
-#     if not current_user.school_id:
-#         flash("No school linked to your account.", "danger")
-#         return redirect(url_for('main.index'))
-
-#     school_id = current_user.school_id  # Get logged-in user's school
-
-#     # Fetch only student fees related to the user's school
-#     fees = StudentFee.query.join(Student).filter(Student.school_id == school_id).all()
-
-#     return render_template('view_fees.html', fees=fees)
 
 @main.route('/view_class_fees', methods=['GET'])
 @login_required
@@ -2769,106 +2256,6 @@ def view_class_fees():
                            selected_academic_year=academic_year,
                            selected_term=term,
                            academic_years=academic_years)
-
-
-# @main.route('/generate_class_fees_pdf', methods=['GET'])
-# @login_required
-# def generate_class_fees_pdf():
-#     class_id = request.args.get('class_id')
-#     academic_year = request.args.get('academic_year')
-#     term = request.args.get('term')
-
-#     if not class_id or not academic_year or not term:
-#         flash("Please select Class, Academic Year, and Term.", "danger")
-#         return redirect(url_for('main.generate_class_fees'))
-    
-#     school = School.query.filter_by(id=current_user.school_id).first() # Use current_user's school
-
-#     if not school:
-#         return "School information not found", 404
-
-#     # assessment = Assessment.query.filter_by(school_id=school.id).first() # Filter by school
-
-#     # if not assessment:
-#     #     return "Assessment information not found", 404
-
-#     school_name = school.name
-#     school_address = school.address
-#     academic_year = academic_year
-
-#     classes = Class.query.filter_by(school_id=school.id, id=class_id).all() # Filter classes by school and class_id
-
-#     if not classes:
-#         flash("Class not found or does not belong to your school.", "danger")
-#         return redirect(url_for('main.generate_class_fees'))
-
-#     # classes = Class.query.filter_by(school_id=school.id).all() # Filter classes by school
-
-#     class_fees = []
-#     for cls in classes:
-#         fee_components = ClassFeeComponent.query.join(FeeComponent).filter(
-#             ClassFeeComponent.class_id == cls.id,
-#             FeeComponent.school_id == current_user.school_id,
-#             FeeComponent.academic_year == academic_year,
-#             FeeComponent.term == term
-#         ).all()
-#         total_fee = sum([component.amount for component in fee_components])
-#         class_fees.append({
-#             "class_name": cls.class_name,
-#             "total_fee": total_fee,
-#             "fee_breakdown": [(comp.fee_component.name, comp.amount) for comp in fee_components]
-#         })
-
-#     # Generate the PDF
-#         # pdf.build(elements)
-#         # buffer.seek(0)
-#         # return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
-
-#     buffer = BytesIO()
-#     pdf = SimpleDocTemplate(buffer, pagesize=letter)
-#     elements = []
-
-#     # Add School Header
-#     elements.append(Table(
-#         [[school_name], [school_address], [academic_year]],
-#         style=TableStyle([
-#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-#             ('FONTSIZE', (0, 0), (-1, -1), 14),
-#             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-#         ]),
-#         colWidths=[500]
-#     ))
-
-#     elements.append(Table([[" "]]))  # Spacer
-
-#     # Add Class Fees Table
-#     data = [["Class Name", "Total Fee (₦)", "Fee Breakdown"]]
-#     for class_fee in class_fees:
-#         fee_breakdown_text = "\n".join([f"{name}: ₦{amount}" for name, amount in class_fee['fee_breakdown']])
-#         data.append([class_fee['class_name'], f"₦{class_fee['total_fee']}", fee_breakdown_text])
-
-#     table = Table(data, colWidths=[150, 100, 250])
-#     table.setStyle(TableStyle([
-#         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-#         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-#         ('FONTSIZE', (0, 0), (-1, 0), 12),
-#         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-#         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-#     ]))
-#     elements.append(table)
-
-#     pdf.build(elements)
-
-#     # Return the PDF as a downloadable file
-#     # buffer.seek(0)
-#     # return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
-
-#     pdf.build(elements)
-#     buffer.seek(0)
-#     return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
 
 
 @main.route('/generate_class_fees_pdf', methods=['GET'])
@@ -2947,31 +2334,22 @@ def generate_class_fees_pdf():
         ]))
         elements.append(table)
 
-        pdf.build(elements)  # Only build the PDF once
+        pdf.build(elements)
 
         buffer.seek(0)
         return send_file(buffer, as_attachment=True, download_name="class_fees.pdf", mimetype='application/pdf')
 
-    except Exception as e:  # Catch any exceptions for debugging
-        print(f"Error generating PDF: {e}")  # Print the error message
-        flash(f"An error occurred while generating the PDF: {e}", "danger")  # Flash the error
-        return redirect(url_for('main.generate_class_fees'))  # Redirect back to the form
+    except Exception as e:
+        print(f"Error generating PDF: {e}")
+        flash(f"An error occurred while generating the PDF: {e}", "danger")
+        return redirect(url_for('main.generate_class_fees'))
     
-# @main.route('/generate_fees', methods=['GET']) # Changed to GET to render a template for selecting class, academic year and term
-# @login_required
-# def generate_fees():
-#     schools = School.query.filter_by(id=current_user.school_id).all()
-#     classes = Class.query.filter_by(school_id=current_user.school_id).all()
-
-#     # Fetch academic years from the database (replace AcademicYear with your model name)
-#     academic_years = [year.academic_year for year in FeeComponent.query.distinct(FeeComponent.academic_year).all()]
-
-#     return render_template('generate_fees.html', schools=schools, classes=classes, academic_years=academic_years) # Pass schools and classes to the template
 
 
 @main.route('/generate_fees', methods=['GET'])
 @login_required
 def generate_fees():
+    # Fetch the logged-in user's school
     school = School.query.filter_by(id=current_user.school_id).first()
 
     if not school:
@@ -3100,3 +2478,529 @@ def record_payment():
         db.session.commit()
         return redirect(url_for('main.view_fees', student_id=student_fee.student_id))
     return render_template('record_payment.html')
+
+
+# Path for the results document
+
+file_directory = "static/results"
+os.makedirs(file_directory, exist_ok=True)
+
+def create_student_result_pdf(student_dict):
+    """Generate a student result PDF using ReportLab and return the file path."""
+    
+    file_path = os.path.join(file_directory, f"result_{student_dict['name']}_{student_dict['result_id']}.pdf")
+
+    doc = SimpleDocTemplate(file_path, pagesize=A4)
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle('Title', parent=styles['Title'], alignment=1, textColor=colors.red)
+    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], alignment=1)
+    normal_style = ParagraphStyle('Normal', parent=styles['Normal'], alignment=0)
+
+    elements = []
+
+    # Retrieve logo path from DB
+    logo_path = student_dict.get("school_logo")
+    # logo_path = student.school_logo
+    background_logo_path = None
+
+    if logo_path:
+        if not logo_path.startswith("uploads/"):
+            logo_path = f"uploads/{os.path.basename(logo_path)}"
+
+        BASE_STATIC_DIR = os.path.join(os.getcwd(), "static")
+        full_logo_path = os.path.join(BASE_STATIC_DIR, logo_path)
+        full_logo_path = os.path.abspath(full_logo_path)
+
+        # Use logo as page background image for the result sheet
+        if os.path.exists(full_logo_path):
+            background_logo_path = full_logo_path
+            img = Image(full_logo_path, width=75, height=75, kind='proportional')
+            elements.append(img)
+        else:
+            print(f"Logo file not found: {full_logo_path}")
+            elements.append(Paragraph("School Logo Not Found", styles['Normal']))
+
+    elements.append(Paragraph(student_dict['school_name'], title_style))
+    elements.append(Paragraph(student_dict['school_address'], heading_style))
+    elements.append(Paragraph("INDIVIDUAL STUDENT'S ASSESSMENT SHEET", heading_style))
+    elements.append(Paragraph(student_dict['class_name'] + " - " + student_dict['class_category'], heading_style))
+
+    # Student Details Table
+    student_details_data = [
+        ["RESULT ID:", student_dict['result_id'], "SEX:", student_dict['sex'], "TERM:", student_dict['term']],
+        ["NAME OF STUDENT:", student_dict['name'], "SESSION:", student_dict['session'], "CLASS:", student_dict['class_name']],
+        [
+            Paragraph("NO. OF TIMES<br/>PRESENT", styles['Normal']),
+            student_dict['times_present'],
+            Paragraph("NO. OF TIMES<br/>SCHOOL OPENED", styles['Normal']),
+            student_dict['times_opened'], "POSITION:", student_dict['class_name']
+        ],
+    ]
+    student_details_table = Table(student_details_data, colWidths=[120, 130, 60, 60, 80, 80])
+    student_details_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    ]))
+    elements.append(student_details_table)
+    elements.append(Spacer(1, 0.1*inch))  # Add space *after* student details table
+
+
+    # Subject Data and Table
+    subject_data = []
+    grand_total = 0
+    passes = 0
+    for subject in student_dict['subjects']:
+        total_score = subject.get('CA1', 0) + subject.get('CA2', 0) + subject.get('EXAMINATION', 0)
+        grade, remark = calculate_grade(total_score)
+        grand_total += total_score
+        if grade in ['A', 'B', 'C']:
+            passes += 1
+        subject_data.append([subject['name'],
+                            subject.get('CA1', 0),
+                            subject.get('CA2', 0),
+                            subject.get('EXAMINATION', 0),
+                            total_score, grade, remark])
+
+    overall_grade = calculate_grade(grand_total / len(student_dict['subjects'])) if student_dict['subjects'] else ("N/A", "N/A")
+
+    student_dict['overall_grade'] = overall_grade[0]
+
+    header_row_1 = [
+        "SUBJECT",
+        Paragraph("CONTINUOUS ASSESSMENT", styles["h3"]),
+        Spacer(1, 1), Spacer(1, 1), Spacer(1, 1),
+        Paragraph("TERM SUMMARY", styles["h3"]),
+        Spacer(1, 1),
+    ]
+
+    header_row_2 = ["SUBJECT", "CA1", "CA2", "EXAMINATION", "TOTAL", "GRADE", "REMARK"]
+    full_subject_data = [header_row_1, header_row_2] + subject_data
+
+    subject_table = Table(full_subject_data, colWidths=[150, 50, 50, 80, 50, 50, 100])
+    subject_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        # ('BACKGROUND', (1, 2), (4, -1), colors.beige),
+        # ('BACKGROUND', (5, 2), (6, -1), colors.beige),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BACKGROUND', (1, 0), (4, 0), colors.lightgrey),
+        ('BACKGROUND', (5, 0), (6, 0), colors.lightgrey),
+        ('SPAN', (1, 0), (4, 0)),
+        ('SPAN', (5, 0), (6, 0)),
+        ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),
+
+    ]))
+
+    elements.append(subject_table)  # Add to elements list
+    elements.append(Spacer(1, 0.1*inch))  # Add space *after* subject table
+
+
+    # Summary and Grading Key Tables
+    term_average = grand_total / len(student_dict['subjects']) if student_dict['subjects'] else 0
+
+    summary_data = [
+        ["Term Grand Total:", str(grand_total)],
+        ["Term Average:", f"{term_average:.2f}"],
+        ["Number of Subject Passes:", str(passes)],
+        ["Overall Grade:", student_dict.get("overall_grade", "N/A")],
+    ]
+    summary_table = Table(summary_data, colWidths=[150, 80])
+    summary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+    ]))
+
+    grading_key_data = [
+        ["Figures", "Grade", "Remark"],
+        ["70 - 100", "A", "Excellent"],
+        ["60 - 69", "B", "Very Good"],
+        ["50 - 59", "C", "Good"],
+        ["45 - 49", "D", "Pass"],
+        ["0 - 44", "E", "Weak"],
+    ]
+
+    grading_key_table = Table(grading_key_data, colWidths=[80, 60, 80])
+    grading_key_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+    ]))
+
+
+    # --- Positioning the tables using Spacer and nested tables ---
+    # Create a nested table to hold summary and grading key side-by-side
+    nested_table_data = [[summary_table, grading_key_table]]
+    nested_table = Table(nested_table_data, colWidths=[300, 300]) # Adjust colWidths as needed
+    nested_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Center the nested tables
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),    # Align tables to the top
+    ]))
+
+    # elements.append(Spacer(20, 1*inch))  # Add some space before the tables
+    elements.append(nested_table)
+    elements.append(Spacer(1, 0.2*inch))
+
+    # Get remarks and signature dynamically
+    teacher_remark = student_dict.get("teacher_remark", "No remark provided.")
+    principal_remark = student_dict.get("principal_remark", "No remark provided.")
+    principal_signature_path = student_dict.get("principal_signature", None)
+
+    # --- Remarks Section ---
+    # elements.append(Paragraph(f"<b>Class Teacher's Remark:</b> {teacher_remark}", styles['Normal']))
+    # elements.append(Spacer(1, 0.2 * inch))
+    # elements.append(Paragraph(f"<b>Principal's Remark:</b> {principal_remark}", styles['Normal']))
+    # elements.append(Spacer(1, 0.2 * inch))
+
+    # elements.append(Paragraph(f"<b>Class Teacher's Remark:</b> <u>{teacher_remark} {'_' * 40}</u>", styles['Normal']))
+    # elements.append(Spacer(1, 0.2 * inch))
+    # elements.append(Paragraph(f"<b>Principal's Remark:</b> <u>{principal_remark} {'_' * 40}</u>", styles['Normal']))
+    # elements.append(Spacer(1, 0.2 * inch))
+
+    table_data = [
+    [Paragraph("<b>Class Teacher's Remark:</b>", styles['Normal']), teacher_remark],
+    [Paragraph("<b>Principal's Remark:</b>", styles['Normal']), principal_remark]
+    ]
+
+    table = Table(table_data, colWidths=[150, 400])
+    table.setStyle(TableStyle([
+        ('LINEBELOW', (1, 0), (1, -1), 1, 'black'),  # Underline for remarks column
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT')
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 0.2 * inch))
+
+
+    # --- Signature Section ---
+    centered_style = ParagraphStyle('Centered', parent=styles['Normal'], alignment=TA_CENTER)
+
+    if principal_signature_path and os.path.exists(principal_signature_path):
+        signature_path = os.path.join("static", "uploads", "signature.png")
+        signature = Image(signature_path, width=100, height=40)
+        elements.append(signature)
+    else:
+        elements.append(Paragraph("<b>____________________________</b>", centered_style))
+
+    elements.append(Paragraph("<b>PRINCIPAL'S SIGNATURE</b>", centered_style))
+
+    # Build PDF with background image
+    def add_background(canvas, doc):
+        if background_logo_path:
+            bg_image = ImageReader(background_logo_path)
+            canvas.setFillAlpha(0.2)
+            canvas.drawImage(bg_image, 100, 200, width=400, height=400,
+                             preserveAspectRatio=True, mask='auto')
+            canvas.setFillAlpha(1)
+
+    # Generate PDF
+    doc.build(elements, onFirstPage=add_background, onLaterPages=add_background)
+    # return file_path
+    # ✅ Return the correct URL for Flask to serve
+    # return f"/results/result_{student_dict['result_id']}.pdf"
+    return f"/results/result_{student_dict['name']}_{student_dict['result_id']}.pdf"
+
+
+# Adding principal signature to students results
+UPLOAD_FOLDER = "static/uploads/signatures"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@main.route("/upload_signature", methods=["GET", "POST"])
+@login_required
+def upload_signature():
+    form = RemarksForm()
+
+    # Populate student choices dynamically
+    students = Student.query.filter_by(school_id=current_user.school_id).all()
+    student_choices = [(str(student.id), f"{student.first_name} {student.last_name} ({student.id})") for student in students]
+    form.student_id.choices = student_choices
+
+    # Populate student class choices dynamically
+    classes = [(str(c.id), c.class_name) for c in current_user.school.classes]
+    form.student_class.choices = classes
+
+    # Populate academic session and term choices dynamically (from Assessment model)
+    assessments = Assessment.query.filter_by(school_id=current_user.school_id).all()
+    academic_sessions = set([assessment.academic_session for assessment in assessments])
+    term_choices = set([assessment.term for assessment in assessments])
+
+    form.academic_session.choices = [(session, session) for session in academic_sessions]
+    form.term.choices = [(term, term) for term in term_choices]
+
+
+    if form.validate_on_submit():
+        student_id = form.student_id.data
+        student_class = form.student_class.data
+        academic_session = form.academic_session.data
+        term = form.term.data
+        teacher_remark = form.teacher_remark.data
+        principal_remark = form.principal_remark.data
+        signature_file = form.signature.data
+
+        student = Student.query.filter_by(id=student_id, school_id=current_user.school_id).first()
+        if not student:
+            flash("Student not found or does not belong to your school!", "danger")
+            return redirect(url_for("upload_signature"))
+
+        assessment = Assessment.query.filter_by(class_id=student.class_id,
+                                                school_id=current_user.school_id,
+                                                academic_session=academic_session,
+                                                term=term).order_by(Assessment.date.desc()).first()
+        if not assessment:
+            flash("Assessment record not found for the selected session and term!", "danger")
+            return redirect(url_for("upload_signature"))
+
+        filename = secure_filename(signature_file.filename)
+        signature_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        signature_file.save(signature_path)
+
+        student.class_id = student_class
+        student.teacher_remark = teacher_remark
+        student.principal_remark = principal_remark
+        student.principal_signature = signature_path
+        student.academic_session = academic_session
+        student.term = term
+        db.session.commit()
+
+        flash("Remarks and signature uploaded successfully!", "success")
+        return redirect(url_for("main.upload_signature"))
+
+    return render_template("upload_signature.html", form=form)
+
+# Teachers/principal results remarks
+@main.route("/submit_remarks", methods=["POST"])
+@login_required
+def submit_remarks():
+    form = RemarksForm()
+    if form.validate_on_submit():
+        student_id = form.student_id.data
+        student_class = form.student_class.data
+        teacher_remark = form.teacher_remark.data
+        principal_remark = form.principal_remark.data
+        signature_file = form.signature.data
+
+    if not all([student_id, student_class, teacher_remark, principal_remark, signature_file]):
+        flash("All fields are required!", "danger")
+        return redirect(url_for("upload_signature"))
+
+    # Fetch student details, ensuring they belong to the admin's school
+    student = Student.query.filter_by(id=student_id, school_id=current_user.school_id).first()
+    if not student:
+        flash("Student not found or does not belong to your school!", "danger")
+        return redirect(url_for("upload_signature"))
+
+    # Fetch academic session and term from Assessment DB
+    assessment = Assessment.query.filter_by(student_id=student_id).first()
+    if not assessment:
+        flash("Assessment record not found!", "danger")
+        return redirect(url_for("upload_signature"))
+
+    academic_session = assessment.academic_session
+    term = assessment.term
+
+    # Save the uploaded signature file
+    filename = secure_filename(signature_file.filename)
+    signature_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+    signature_file.save(signature_path)
+
+    # Update student record
+    student.class_id = student_class
+    student.teacher_remark = teacher_remark
+    student.principal_remark = principal_remark
+    student.principal_signature = signature_path
+    student.academic_session = academic_session
+    student.term = term
+    db.session.commit()
+    
+
+    flash("Remarks and signature uploaded successfully!", "success")
+    return redirect(url_for("upload_signature", student=student, academic_session=academic_session, term=term))
+
+
+@main.route('/generate-results', methods=['GET', 'POST'])
+@login_required
+def generate_results():
+    if current_user.role != 'admin':
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('main.index'))
+
+    # Filter students and classes by the logged-in admin's school
+    students = Student.query.filter_by(school_id=current_user.school_id).all()
+    classes = Class.query.filter_by(school_id=current_user.school_id).all()
+
+    # Get distinct academic sessions related to the logged-in user's school
+    academic_sessions = (
+        db.session.query(Assessment.academic_session)
+        .join(AssessmentSubjectScore, Assessment.id == AssessmentSubjectScore.assessment_id)
+        .join(Student, Student.id == AssessmentSubjectScore.student_id)
+        .filter(Student.school_id == current_user.school_id)
+        .distinct()
+        .all()
+    )
+    academic_sessions = [session[0] for session in academic_sessions]
+
+    if request.method == 'POST':
+        student_id = request.form.get('student')
+        class_id = request.form.get('class')
+        academic_session = request.form.get('academic_session')
+
+        # Ensure the selected student and class belong to the logged-in user's school
+        student = Student.query.filter_by(id=student_id, school_id=current_user.school_id).first()
+        class_obj = Class.query.filter_by(id=class_id, school_id=current_user.school_id).first()
+
+        if not student or not class_obj:
+            flash('Invalid selection. Please choose valid student and class.', 'danger')
+            return redirect(url_for('main.generate_results'))
+
+        student_record = (
+            db.session.query(
+                Student.id, Student.first_name,
+                Student.last_name, Student.contact_email,
+                Student.teacher_remark, Student.principal_remark,
+                Student.principal_signature,
+                School.name.label("school_name"), School.address.label("school_address"),
+                Student.gender.label("sex"), School.school_logo        
+            )
+            .join(School, Student.school_id == School.id)
+            .filter(Student.id == student_id, Student.school_id == current_user.school_id)
+            .first()
+        )
+
+        if not student_record:
+            flash('Invalid selection. Please choose a valid student.', 'danger')
+            return redirect(url_for('main.generate_results'))
+
+        # Get attendance records for the student
+        attendance_records = Attendance.query.filter_by(student_id=student_id).all()
+        times_present = sum(1 for record in attendance_records if record.days_present == 'present')
+        times_opened = len(attendance_records)
+
+        # Get subjects and scores for the student
+        class_subjects = ClassSubject.query.filter_by(class_id=class_id).all()
+        subjects = [cs.subject for cs in class_subjects if cs.subject.school_id == current_user.school_id]
+
+        subject_scores = {}
+        for subject in subjects:
+            subject_name = subject.name
+            subject_scores[subject_name] = {'CA1': 0, 'CA2': 0, 'EXAMINATION': 0}
+
+            assessments = Assessment.query.filter_by(class_id=class_id, school_id=current_user.school_id).all()
+            for assessment in assessments:
+                subject_score = AssessmentSubjectScore.query.filter_by(
+                    assessment_id=assessment.id,
+                    student_id=student_id,
+                    subject_id=subject.id
+                ).first()
+
+                if subject_score:
+                    if 'CA1' in assessment.name:
+                        subject_scores[subject_name]['CA1'] = subject_score.total_marks
+                    elif 'CA2' in assessment.name:
+                        subject_scores[subject_name]['CA2'] = subject_score.total_marks
+                    elif 'EXAMINATION' in assessment.name:
+                        subject_scores[subject_name]['EXAMINATION'] = subject_score.total_marks
+
+        grand_total = sum(sum(scores.values()) for scores in subject_scores.values())
+
+        student_dict = {
+            "result_id": student_record.id,
+            "name": f"{student_record.first_name} {student_record.last_name}",
+            "email": student_record.contact_email,
+            "school_name": student_record.school_name,
+            "school_address": student_record.school_address,
+            "sex": student_record.sex,
+            "session": academic_session,
+            "class_name": class_obj.class_name,
+            "term": assessment.term if assessment else "N/A",
+            "times_present": times_present,
+            "times_opened": times_opened,
+            "teacher_remark": student_record.teacher_remark,
+            "principal_remake": student_record.principal_remark,
+            "principal_signature": student_record.principal_signature,
+            "class_category": class_obj.class_category,
+            "subjects": [
+                {
+                    "name": subject,
+                    "CA1": scores['CA1'],
+                    "CA2": scores['CA2'],
+                    "EXAMINATION": scores['EXAMINATION']
+                }
+                for subject, scores in subject_scores.items()
+            ],
+            "grand_total": grand_total,
+            "overall_grade": "A",  # You'll need logic to calculate this
+            "school_logo": student_record.school_logo
+        }
+
+        pdf_url = create_student_result_pdf(student_dict)
+
+        # Save the PDF URL to the student's dashboard
+        student.result_url = pdf_url
+        db.session.commit()
+
+        flash('Results generated successfully!', 'success')
+        return redirect(url_for('main.student_dashboard', student_id=student_id))
+
+    return render_template('generate_results.html', students=students, classes=classes, academic_sessions=academic_sessions)
+
+@main.route('/results/<filename>')
+def serve_results(filename):
+    return send_from_directory('static/results', filename)
+
+
+@main.route('/download/<filename>')
+def download_file(filename):
+    return send_from_directory(file_directory, filename, as_attachment=True)
+
+
+@main.route('/list_students_result', methods=['GET'])
+def list_students_result():
+    students = Student.query.with_entities(
+        Student.id, 
+        Student.result_url, 
+        Student.teacher_remark, 
+        Student.principal_remark, 
+        Student.principal_signature
+    ).all()
+    return render_template('list_students_results.html', students=students)
+
+@main.route('/students_result/<int:student_id>', methods=['GET', 'POST'])
+def edit_student_result(student_id):
+    student = Student.query.get_or_404(student_id)
+
+    form = RemarksForm()
+    if form.validate_on_submit():
+        student.result_url = request.form['result_url']
+        student.teacher_remark = request.form['teacher_remark']
+        student.principal_remark = request.form['principal_remark']
+        student.principal_signature = request.form['principal_signature']
+
+        db.session.commit()
+
+        return redirect(url_for('main.list_students_result', student_id=student.id))
+    
+    return render_template('edit_student_results.html', student=student, form=form)
+
+
+@main.route('/students_result/delete/<int:student_id>', methods=['POST'])
+def delete_student_result(student_id):
+    student = Student.query.get_or_404(student_id)
+    student.result_url = None
+    student.teacher_remark = None
+    student.principal_remark = None
+    # student.principal_signature = None
+    db.session.commit()
+    return redirect(url_for('main.list_students_result'))

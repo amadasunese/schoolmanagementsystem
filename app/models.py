@@ -28,6 +28,89 @@ class School(db.Model):
     fee_components = db.relationship('FeeComponent', backref='school', lazy=True, cascade="all, delete-orphan")
     assessment_types = db.relationship('AssessmentType', backref='school', lazy=True, cascade="all, delete-orphan")
 
+# class User(UserMixin, db.Model):
+#     __tablename__ = 'users'
+#     id = db.Column(db.Integer, primary_key=True)
+#     username = db.Column(db.String(50), unique=True, nullable=False)
+#     password_hash = db.Column(db.String(128), nullable=False)
+#     role = db.Column(db.Enum('admin', 'teacher', 'student', name='user_roles'), nullable=False)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_users_school_id'), nullable=False)
+#     # student_id = db.Column(db.Integer, db.ForeignKey('student.id'), name='fk_users_student_id', nullable=True)
+#     student_id = db.Column(db.Integer, db.ForeignKey('students.id', name='fk_users_student_id'), nullable=True)  # Fix: Reference 'students.id'
+#     student = db.relationship('Student', backref='user', uselist=False)
+
+# class User(UserMixin, db.Model):
+#     __tablename__ = 'users'
+#     id = db.Column(db.Integer, primary_key=True)
+#     username = db.Column(db.String(50), unique=True, nullable=False)
+#     password_hash = db.Column(db.String(128), nullable=False)
+#     role = db.Column(db.Enum('admin', 'teacher', 'student', name='user_roles'), nullable=False)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_users_school_id'), nullable=False)
+#     student_id = db.Column(db.Integer, db.ForeignKey('students.id', name='fk_users_student_id'), unique=True, nullable=True)  # Ensure it's unique!
+
+#     # Define a proper one-to-one relationship
+#     student = db.relationship('Student', back_populates='user', uselist=False)
+
+#     def set_password(self, password):
+#         self.password_hash = generate_password_hash(password)
+
+#     def check_password(self, password):
+#         return check_password_hash(self.password_hash, password)
+
+
+#     @login_manager.user_loader
+#     def load_user(user_id):
+#         return User.query.get(int(user_id))
+
+# class Student(db.Model):
+#     __tablename__ = 'students'
+#     id = db.Column(db.Integer, primary_key=True)
+#     first_name = db.Column(db.String(50), nullable=False)
+#     last_name = db.Column(db.String(50), nullable=False)
+#     date_of_birth = db.Column(db.Date, nullable=False)
+#     enrollment_date = db.Column(db.Date, nullable=False)
+#     gender = db.Column(db.String(1), nullable=False)
+#     grade_level = db.Column(db.String(20), nullable=False)
+#     contact_email = db.Column(db.String(100), nullable=False)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_students_school_id'), nullable=False)
+#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id', name='fk_students_class_id'), nullable=False)
+#     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), name='fk_students_user_id', nullable=False)
+
+# class Student(db.Model):
+#     __tablename__ = 'students'
+#     id = db.Column(db.Integer, primary_key=True)
+#     first_name = db.Column(db.String(50), nullable=False)
+#     last_name = db.Column(db.String(50), nullable=False)
+#     date_of_birth = db.Column(db.Date, nullable=False)
+#     enrollment_date = db.Column(db.Date, nullable=False)
+#     gender = db.Column(db.String(1), nullable=False)
+#     grade_level = db.Column(db.String(20), nullable=False)
+#     contact_email = db.Column(db.String(100), nullable=False)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_students_school_id'), nullable=False)
+#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id', name='fk_students_class_id'), nullable=False)
+#     user_id = db.Column(db.Integer, db.ForeignKey('users.id', name='fk_students_user_id'), unique=True, nullable=True)  # Ensure it's unique!
+
+#     # Define a proper one-to-one relationship
+#     user = db.relationship('User', back_populates='student', uselist=False)
+
+#     # Other relationships
+#     grades = db.relationship('Grade', backref='student', lazy=True, cascade="all, delete-orphan")
+#     attendance = db.relationship('Attendance', backref='student', lazy=True, cascade="all, delete-orphan")
+#     student_assessments = db.relationship('AssessmentSubjectScore', backref='student', lazy=True, cascade="all, delete-orphan")
+
+# class User(UserMixin, db.Model):
+#     __tablename__ = 'users'
+#     id = db.Column(db.Integer, primary_key=True)
+#     username = db.Column(db.String(50), unique=True, nullable=False)
+#     password_hash = db.Column(db.String(128), nullable=False)
+#     role = db.Column(db.Enum('admin', 'teacher', 'student', name='user_roles'), nullable=False)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_users_school_id'), nullable=False)
+#     student_id = db.Column(db.Integer, db.ForeignKey('students.id', name='fk_users_student_id'), unique=True, nullable=True)
+
+#     # Explicitly specify foreign_keys
+#     # student = db.relationship('Student', foreign_keys=[student_id], back_populates='user', uselist=False)
+#     student = db.relationship('Student', back_populates='user', foreign_keys=[student_id], uselist=False)
+
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -35,6 +118,13 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.Enum('admin', 'teacher', 'student', name='user_roles'), nullable=False)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_users_school_id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id', name='fk_users_student_id'), nullable=True)
+    
+    # student_id = db.Column(db.Integer, db.ForeignKey('students.id', name='fk_users_student_id'), unique=True, nullable=True)
+
+    # Explicitly define foreign_keys
+    # student = db.relationship('Student', back_populates='user', uselist=False, foreign_keys=[student_id])
+
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -45,6 +135,25 @@ class User(UserMixin, db.Model):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
+
+
+# class Student(db.Model):
+#     __tablename__ = 'students'
+#     id = db.Column(db.Integer, primary_key=True)
+#     first_name = db.Column(db.String(50), nullable=False)
+#     last_name = db.Column(db.String(50), nullable=False)
+#     date_of_birth = db.Column(db.Date, nullable=False)
+#     enrollment_date = db.Column(db.Date, nullable=False)
+#     gender = db.Column(db.String(1), nullable=False)
+#     grade_level = db.Column(db.String(20), nullable=False)
+#     contact_email = db.Column(db.String(100), nullable=False)
+#     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_students_school_id'), nullable=False)
+#     class_id = db.Column(db.Integer, db.ForeignKey('classes.id', name='fk_students_class_id'), nullable=False)
+#     user_id = db.Column(db.Integer, db.ForeignKey('users.id', name='fk_students_user_id'), unique=True, nullable=True)
+
+#     # Explicitly specify foreign_keys
+#     # user = db.relationship('User', foreign_keys=[user_id], back_populates='student', uselist=False)
+#     user = db.relationship('User', back_populates='student', foreign_keys=[user_id], uselist=False, remote_side=[User.id])
 
 class Student(db.Model):
     __tablename__ = 'students'
@@ -58,12 +167,19 @@ class Student(db.Model):
     contact_email = db.Column(db.String(100), nullable=False)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', name='fk_students_school_id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id', name='fk_students_class_id'), nullable=False)
+    result_url = db.Column(db.String(255), nullable=True)
+    teacher_remark = db.Column(db.String(255), nullable=True)
+    principal_remark = db.Column(db.String(255), nullable=True)
+    principal_signature = db.Column(db.String(255), nullable=True)
 
-    # Relationships
+    # Other relationships
     grades = db.relationship('Grade', backref='student', lazy=True, cascade="all, delete-orphan")
     attendance = db.relationship('Attendance', backref='student', lazy=True, cascade="all, delete-orphan")
-    # student_fees = db.relationship('StudentFee', backref='student', lazy=True, cascade="all, delete-orphan")
     student_assessments = db.relationship('AssessmentSubjectScore', backref='student', lazy=True, cascade="all, delete-orphan")
+    # Relationships
+    users = db.relationship('User', backref='student', lazy=True, cascade="all, delete-orphan")
+
+
 
 class_teacher_association = db.Table(
     'class_teacher_association',
@@ -122,6 +238,10 @@ class ClassSubject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+
+    subject = db.relationship('Subject', backref='subjects_per_class')  # This is crucial!
+    class_ = db.relationship('Class', backref='class_per_subjects') # This is crucial!
+
 
 class Assessment(db.Model):
     __tablename__ = 'assessments'
@@ -280,7 +400,7 @@ class FeeComponent(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
-    academic_year = db.Column(db.String(10), nullable=False) # Add academic year
+    academic_year = db.Column(db.String(10), nullable=False)
     term = db.Column(db.String(20), nullable=False) # Add term
 
     # Relationships

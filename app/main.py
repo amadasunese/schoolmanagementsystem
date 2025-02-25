@@ -6,6 +6,9 @@ from flask_login import LoginManager, current_user
 from config import Config
 import os
 from extensions import db, migrate, login_manager, bootstrap
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+
+
 
 
 
@@ -13,6 +16,9 @@ from extensions import db, migrate, login_manager, bootstrap
 app = Flask(__name__)
 app.config.from_object(Config)
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'static/uploads')
+# csrf = CSRFProtect(app)
+csrf = CSRFProtect()
+csrf.init_app(app)
 
 # Initialize extensions with app
 db.init_app(app)
@@ -30,11 +36,16 @@ app.static_url_path = '/static'
 def before_request():
     g.current_user = current_user
 
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf())
+
 # Import and register blueprints within the app context
 with app.app_context():
     # from models import models
     from routes import main
     app.register_blueprint(main)
+
 
 
     # Create all database tables

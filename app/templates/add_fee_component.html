@@ -5,6 +5,10 @@
 {% block content %}
     <h1>Add Fee Component</h1>
     <form method="POST" action="{{ url_for('main.add_fee_component') }}">
+        <!-- CSRF Token -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">  <!-- Use as a variable -->
+
+
         <div class="form-group">
             <label for="name">Name</label>
             <input type="text" class="form-control" id="name" name="name" required>

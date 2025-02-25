@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>Edit Student Result</h2>
+    <form method="POST">
+        <label>Result URL:</label>
+        <input type="text" name="result_url" value="{{ student.result_url }}" required><br>
+
+        <label>Teacher Remark:</label>
+        <textarea name="teacher_remark" required>{{ student.teacher_remark }}</textarea><br>
+
+        <label>Principal Remark:</label>
+        <textarea name="principal_remark" required>{{ student.principal_remark }}</textarea><br>
+
+        <label>Principal Signature:</label>
+        <input type="text" name="principal_signature" value="{{ student.principal_signature }}" required><br>
+
+        <button type="submit">Save</button>
+    </form>
+
+    <form action="{{ url_for('main.delete_student_result', student_id=student.id) }}" method="POST">
+        <button type="submit">Delete</button>
+    </form>
+{% endblock %}
+

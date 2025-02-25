@@ -1,6 +1,43 @@
 from functools import wraps
 from flask import flash, redirect, url_for
 from flask_login import current_user
+from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, g, session
+from extensions import db
+import os
+from forms import (
+    TeacherForm, ClassForm, GradeForm, AttendanceForm, StudentForm, AssignTeachersForm,
+    AssessmentForm, AssessmentResultForm, SubjectForm, SchoolForm, UserForm, AssessmentTypeForm, 
+    AssignSubjectToClassForm, LoginForm, RemarksForm  # RemarksForm added here
+)
+from models import (
+    User, Student, Teacher, Class, Attendance, Assessment, AssessmentType,
+    AssessmentSubjectScore, AssessmentResult, Subject, ClassSubject, TeacherSubject, School,
+    Grade, FeeComponent, StudentClassFeePayment, ClassFeeComponent  # Combined model imports
+)
+from flask_login import login_user, logout_user, login_required, current_user
+from io import BytesIO
+import pandas as pd
+from docx import Document
+from flask import send_from_directory
+from sqlalchemy.sql import func
+from werkzeug.utils import secure_filename
+from flask import current_app
+from config import Config
+from sqlalchemy.orm import joinedload
+from reportlab.lib.pagesizes import A4, letter # Only import A4 and letter once
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle, SimpleDocTemplate, Paragraph, Spacer, Image # Combined reportlab imports
+from flask import send_file, jsonify
+import json
+from collections import defaultdict
+from sqlalchemy.orm import aliased
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle # Combined styles import
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.utils import ImageReader  # Only import ImageReader once
+import uuid
+from flask_wtf.csrf import validate_csrf, generate_csrf # Combined csrf imports
 
 def school_required(model, school_field="school_id"):
     """Decorator to restrict access to objects linked to the logged-in user's school."""

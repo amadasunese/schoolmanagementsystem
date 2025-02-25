@@ -65,8 +65,10 @@
             <div class="card shadow">
                 <div class="card-header bg-danger text-white">Fees Management</div>
                 <div class="card-body">
-                    <a href="{{ url_for('main.fee_components') }}" class="btn btn-outline-danger btn-block">Fee Components</a>
-                    <a href="{{ url_for('main.view_class_fees') }}" class="btn btn-outline-danger btn-block">Student Fees</a>
+                    <a href="{{ url_for('main.fee_components') }}" class="btn btn-outline-danger btn-block">View/Add Fee Components</a>
+                    <a href="{{ url_for('main.view_class_fees') }}" class="btn btn-outline-danger btn-block">View Class Fees</a>
+                    <a href="{{ url_for('main.view_class_fees') }}" class="btn btn-outline-danger btn-block">Assign Fees to Classes</a>
+                    <a href="{{ url_for('main.generate_fees') }}" class="btn btn-outline-danger btn-block">Generate/Print Class Fees</a>
                     <a href="{{ url_for('main.record_payment') }}" class="btn btn-outline-danger btn-block">Record Payment</a>
                 </div>
             </div>
@@ -87,9 +89,9 @@
 
         <div class="col-md-6">
             <div class="card shadow">
-                <div class="card-header bg-info text-white">School Registration</div>
+                <div class="card-header bg-info text-white">School User Registration</div>
                 <div class="card-body">
-                    <a href="{{ url_for('main.register_school') }}" class="btn btn-outline-info btn-block">Register School</a>
+                    <a href="{{ url_for('main.register_user', school_code=school.registration_code, _external=True) }}" class="btn btn-outline-info btn-block">Register Users</a>
                 </div>
             </div>
         </div>

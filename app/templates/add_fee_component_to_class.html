@@ -8,6 +8,8 @@
     <h1>Add Fee Components to Class</h1>
     <form method="POST" action="{{ url_for('main.add_fee_component_to_class') }}">
         <!-- CSRF Token -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
 
         <div class="form-group">
             <label for="academic_year">Academic Year:</label>

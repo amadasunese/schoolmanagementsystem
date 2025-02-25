@@ -4,11 +4,20 @@ from wtforms.validators import DataRequired, Length, NumberRange, Email, Validat
 from flask_wtf.file import FileField, FileAllowed
 from models import Class, School, Teacher
 
+# class UserForm(FlaskForm):
+#     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
+#     password = PasswordField('Password', validators=[DataRequired()])
+#     role = SelectField('Role', choices=[('admin', 'Admin'), ('teacher', 'Teacher'), ('student', 'Student')], validators=[DataRequired()])
+#     school_id = SelectField('School', coerce=int, validators=[DataRequired()])
+#     submit = SubmitField('Register')
+
 class UserForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
+    username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     role = SelectField('Role', choices=[('admin', 'Admin'), ('teacher', 'Teacher'), ('student', 'Student')], validators=[DataRequired()])
     school_id = SelectField('School', coerce=int, validators=[DataRequired()])
+    student_id = SelectField('Student', coerce=int, choices=[], validators=[])  # Default empty choices
+    teacher_id = SelectField('Teacher', coerce=int, choices=[], validators=[])  # Default empty choices
     submit = SubmitField('Register')
 
 class SchoolForm(FlaskForm):
@@ -161,4 +170,39 @@ class AssessmentSubjectScoreForm(FlaskForm):
     total_marks = StringField('Total Marks', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
-   
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, TextAreaField, FileField, SubmitField
+from wtforms.validators import DataRequired
+
+# class RemarksForm(FlaskForm):
+#     student_id = SelectField('Student', coerce=int, validators=[DataRequired()])
+#     class_name = SelectField('Class', coerce=int, validators=[DataRequired()])
+#     academic_session = SelectField('Academic Session', coerce=str, validators=[DataRequired()])
+#     term = SelectField('Term', choices=[('First Term', 'First Term'), ('Second Term', 'Second Term'), ('Third Term', 'Third Term')], validators=[DataRequired()])
+#     teacher_remark = TextAreaField('Teacher\'s Remark', validators=[DataRequired()])
+#     principal_remark = TextAreaField('Principal\'s Remark', validators=[DataRequired()])
+#     signature = FileField('Upload Principal\'s Signature', validators=[DataRequired()])
+#     submit = SubmitField('Submit')
+
+# class RemarksForm(FlaskForm):
+#     student_id = StringField("Student ID", validators=[DataRequired()])
+#     # Dynamically populate choices for student_class
+#     student_class = SelectField("Student Class", choices=[], validators=[DataRequired()])
+#     teacher_remark = TextAreaField("Teacher's Remark", validators=[DataRequired()])
+#     principal_remark = TextAreaField("Principal's Remark", validators=[DataRequired()])
+#     signature = FileField("Signature", validators=[DataRequired()])
+#     submit = SubmitField("Submit")
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, TextAreaField, FileField, SubmitField, HiddenField
+from wtforms.validators import DataRequired
+
+class RemarksForm(FlaskForm):
+    student_id = SelectField("Select Student", choices=[], validators=[DataRequired()])
+    student_class = SelectField("Student Class", choices=[], validators=[DataRequired()])
+    academic_session = SelectField("Academic Session", choices=[], validators=[DataRequired()]) # SelectField
+    term = SelectField("Term", choices=[], validators=[DataRequired()]) # SelectField
+    teacher_remark = TextAreaField("Teacher's Remark", validators=[DataRequired()])
+    principal_remark = TextAreaField("Principal's Remark", validators=[DataRequired()])
+    signature = FileField("Signature", validators=[DataRequired()])
+    submit = SubmitField("Submit")
