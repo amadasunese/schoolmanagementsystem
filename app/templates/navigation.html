@@ -43,7 +43,7 @@
                                 <li><a class="dropdown-item" href="{{ url_for('main.view_class_subjects') }}">View Subject by Class</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.assessments') }}">Assessments</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.assessment_types') }}">Assessment Types</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('main.assessment_subject_scores') }}">Assessment Subject Scores</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.scores') }}">Assessment Scores By Subjects</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.add_assessment_score') }}">Add Assessment Score</a></li>
                             </ul>
                         </li>
@@ -54,7 +54,7 @@
                             <ul class="dropdown-menu" aria-labelledby="subjectsAssessmentsDropdown">
                                 <li><a class="dropdown-item" href="{{ url_for('main.generate_results') }}">Generate Students Results</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.upload_signature') }}">Remarks on Results</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('main.list_students_result') }}">Edit/Remove Results</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.list_students_result') }}">View/Edit/Remove Results</a></li>
 
                             </ul>
                         </li>
@@ -67,7 +67,7 @@
                                 <li><a class="dropdown-item" href="{{ url_for('main.view_class_fees') }}">Class Fees</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.add_fee_component_to_class') }}">Assign Fees to Classes</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('main.generate_fees') }}">Generate Class Fees</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('main.record_payment') }}">Record Payment</a></li>
+                                <!-- <li><a class="dropdown-item" href="{{ url_for('main.record_payment') }}">Record Payment</a></li> -->
                             </ul>
                         </li>
 

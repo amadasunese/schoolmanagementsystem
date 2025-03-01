@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import flash, redirect, url_for
+from flask import flash, redirect, url_for, abort
 from flask_login import current_user
 from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, g, session
 from extensions import db
@@ -38,6 +38,9 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.utils import ImageReader  # Only import ImageReader once
 import uuid
 from flask_wtf.csrf import validate_csrf, generate_csrf # Combined csrf imports
+import datetime
+from models import assessment_class_association
+
 
 def school_required(model, school_field="school_id"):
     """Decorator to restrict access to objects linked to the logged-in user's school."""
@@ -87,3 +90,26 @@ def filter_by_school(model, school_field="school_id"):
             return f(filtered_data, *args, **kwargs)
         return wrapped_function
     return decorator
+
+def admin_access(func):
+    """Decorator to allow admin users to access any route."""
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_authenticated and current_user.role == 'admin':
+            return func(*args, **kwargs)  # Admin has access
+
+        # If not admin, let the original function's access control handle it
+        return func(*args, **kwargs)
+    return decorated_function
+
+# ADMIN ONLY ACCESS
+def admin_required(func):
+    """Decorator to restrict access to admin users."""
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            abort(403)
+            # flash("You do not have permission to access this page.", "danger")
+            return redirect(url_for('main.index'))  # Or any other appropriate redirect
+        return func(*args, **kwargs)
+    return decorated_function

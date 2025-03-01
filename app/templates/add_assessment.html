@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Add flash message for error -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         {% for category, message in messages %}
@@ -28,8 +27,13 @@
         {{ form.assessment_type(class="form-control") }}
     </div><br>
     <div class="form-group">
-        {{ form.class_id.label }}
-        {{ form.class_id(class="form-control") }}
+        {{ form.class_ids.label }}
+        <select name="class_ids" class="form-control" multiple>
+            {% for value, label in form.class_ids.choices %}
+                <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <small>Select multiple classes (Hold Ctrl/Cmd to select multiple)</small>
     </div><br>
     <div class="form-group">
         {{ form.academic_session.label }}
