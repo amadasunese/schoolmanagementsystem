@@ -127,7 +127,7 @@ class Subject(db.Model):
     # Relationships
     teacher_subjects = db.relationship('TeacherSubject', backref='teacher_subject', lazy=True, cascade="all, delete-orphan")
     assessment_scores = db.relationship('AssessmentSubjectScore', backref='subject_ref', lazy=True, cascade="all, delete-orphan")
-    class_subjects = db.relationship('ClassSubject', backref='class_subject', lazy=True, cascade="all, delete-orphan")
+    class_subjects = db.relationship('ClassSubject', backref='class_subject', overlaps="class_subject,class_subjects,class_per_subjects", lazy=True, cascade="all, delete-orphan")
 
 class ClassSubject(db.Model):
     __tablename__ = 'class_subjects'
@@ -201,7 +201,7 @@ class AssessmentSubjectScore(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id', name='fk_assessment_subject_scores_subject_id'), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id', ondelete='RESTRICT'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     total_marks = db.Column(db.Integer, nullable=False)
 
 class AssessmentResult(db.Model):

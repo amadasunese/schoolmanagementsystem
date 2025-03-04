@@ -1721,172 +1721,214 @@ def delete_assessment(assessment_id):
 
 
 
-# @main.route('/assessment_subject_scores')
-# @login_required
-# @admin_required
-# def assessment_subject_scores():
-#     # Ensure the user is linked to a school
-#     if not current_user.school_id:
-#         flash("No school linked to your account.", "danger")
-#         return redirect(url_for('main.index'))
+@main.route('/assessment_subject_scores')
+@login_required
+@admin_required
+def assessment_subject_scores():
+    # Ensure the user is linked to a school
+    if not current_user.school_id:
+        flash("No school linked to your account.", "danger")
+        return redirect(url_for('main.index'))
 
-#     school_id = current_user.school_id
+    school_id = current_user.school_id
 
-#     # Get filter parameters from the request
-#     assessment_id = request.args.get('assessment')
-#     academic_session = request.args.get('academic_session')
-#     subject_id = request.args.get('subject')
-#     student_id = request.args.get('student')
+    # Get filter parameters from the request
+    assessment_id = request.args.get('assessment')
+    academic_session = request.args.get('academic_session')
+    subject_id = request.args.get('subject')
+    student_id = request.args.get('student')
+    class_id = request.args.get('class_id') # Get class_id from request
 
-#     # Base query with school filtering
-#     query = db.session.query(
-#         AssessmentSubjectScore,
-#         Assessment.name.label('assessment_name'),
-#         Subject.name.label('subject_name'),
-#         Student.first_name,
-#         Student.last_name,
-#         AssessmentSubjectScore.total_marks,
-#         Assessment.academic_session
-#     ).join(
-#         Assessment, AssessmentSubjectScore.assessment_id == Assessment.id
-#     ).join(
-#         Subject, AssessmentSubjectScore.subject_id == Subject.id
-#     ).join(
-#         Student, AssessmentSubjectScore.student_id == Student.id
-#     ).filter(
-#         Student.school_id == school_id
-#     )
+    # Base query with school filtering
+    query = db.session.query(
+        AssessmentSubjectScore.id.label('score_id'),
+        AssessmentSubjectScore,
+        Assessment.name.label('assessment_name'),
+        Subject.name.label('subject_name'),
+        Student.first_name,
+        Student.last_name,
+        AssessmentSubjectScore.total_marks,
+        Assessment.academic_session,
+        Class.class_name
+    ).join(
+        Assessment, AssessmentSubjectScore.assessment_id == Assessment.id
+    ).join(
+        Subject, AssessmentSubjectScore.subject_id == Subject.id
+    ).join(
+        Student, AssessmentSubjectScore.student_id == Student.id
+    ).filter(
+        Student.school_id == school_id,
+        Class.school_id == school_id
+    )
 
-#     # Apply additional filters
-#     if assessment_id:
-#         query = query.filter(AssessmentSubjectScore.assessment_id == assessment_id)
-#     if academic_session:
-#         query = query.filter(Assessment.academic_session == academic_session)
-#     if subject_id:
-#         query = query.filter(AssessmentSubjectScore.subject_id == subject_id)
-#     if student_id:
-#         query = query.filter(AssessmentSubjectScore.student_id == student_id)
+    # Apply additional filters
+    if assessment_id:
+        query = query.filter(AssessmentSubjectScore.assessment_id == assessment_id)
+    if academic_session:
+        query = query.filter(Assessment.academic_session == academic_session)
+    if subject_id:
+        query = query.filter(AssessmentSubjectScore.subject_id == subject_id)
+    if student_id:
+        query = query.filter(AssessmentSubjectScore.student_id == student_id)
+    if class_id:
+        query = query.filter(ClassSubject.class_id == class_id)
 
-#     # Fetch filtered results
-#     scores = query.all()
 
-#     # Fetch filter options, ensuring they are linked to the same school
-#     assessments = Assessment.query.filter_by(school_id=school_id).all()
-#     academic_sessions = db.session.query(Assessment.academic_session).filter_by(school_id=school_id).distinct().all()
-#     subjects = Subject.query.filter_by(school_id=school_id).all()
-#     students = Student.query.filter_by(school_id=school_id).all()
+    # Fetch filtered results
+    scores = query.all()
+    # print('scores:', scores)
 
-#     if request.method == 'POST':
-#         if 'edit_score' in request.form:
-#             score_id = request.form.get('edit_score')
-#             return redirect(url_for('main.edit_assessment_subject_score', score_id=score_id))
-#         elif 'delete_score' in request.form:
-#             score_id = request.form.get('delete_score')
-#             score = AssessmentSubjectScore.query.get_or_404(score_id)
-#             if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
-#                 flash("You don't have permission to delete this score.", "danger")
-#                 return redirect(url_for('main.assessment_subject_scores'))
+    # Fetch filter options, ensuring they are linked to the same school
+    assessments = Assessment.query.filter_by(school_id=school_id).all()
+    academic_sessions = db.session.query(Assessment.academic_session).filter_by(school_id=school_id).distinct().all()
+    subjects = Subject.query.filter_by(school_id=school_id).all()
+    students = Student.query.filter_by(school_id=school_id).all()
+    classes = Class.query.filter_by(school_id=school_id).all()
+    class_subjects = ClassSubject.query.join(Class).filter(Class.school_id == school_id).options(joinedload(ClassSubject.subject)).all()
+    # class_subjects = ClassSubject.query.filter_by(school_id=school_id).all() # if class_id else ClassSubject.query.filter_by(school_id=school_id).all()
+    print('this is class subjects:', class_subjects)
+    print('this is class assessment:', assessments)
 
-#             try:
-#                 db.session.delete(score)
-#                 db.session.commit()
-#                 flash("Score deleted successfully.", "success")
-#             except Exception as e:
-#                 db.session.rollback()
-#                 flash(f"Error deleting score: {str(e)}", "danger")
-#             return redirect(url_for('main.assessment_subject_scores'))
+    # Handle form submission for score editing and deletion
+    if request.method == 'POST':
+        if 'edit_score' in request.form:
+            score_id = request.form.get('edit_score')
+            return redirect(url_for('main.edit_assessment_subject_score', score_id=score_id))
+        elif 'delete_score' in request.form:
+            score_id = request.form.get('delete_score')
+            score = AssessmentSubjectScore.query.get_or_404(score_id)
+            if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
+                flash("You don't have permission to delete this score.", "danger")
+                return redirect(url_for('main.assessment_subject_scores'))
+
+            try:
+                db.session.delete(score)
+                db.session.commit()
+                flash("Score deleted successfully.", "success")
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error deleting score: {str(e)}", "danger")
+            return redirect(url_for('main.assessment_subject_scores'))
     
-#     csrf_token = generate_csrf()
+    csrf_token = generate_csrf()
 
-#     return render_template(
-#         'assessment_subject_scores.html',
-#         scores=scores,
-#         assessments=assessments,
-#         academic_sessions=[session[0] for session in academic_sessions],
-#         subjects=subjects,
-#         students=students,
-#         csrf_token=csrf_token,
-#         is_admin=current_user.role == 'admin'
-#     )
+    return render_template(
+        'assessment_subject_scores.html',
+        scores=scores,
+        assessments=assessments,
+        academic_sessions=[session[0] for session in academic_sessions],
+        subjects=subjects,
+        students=students,
+        csrf_token=csrf_token,
+        classes=classes,
+        is_admin=current_user.role == 'admin',
+        class_subjects=class_subjects
+    )
 
 
-# @main.route('/edit_assessment_subject_score/<int:score_id>', methods=['GET', 'POST'])
-# @login_required
-# @admin_required
-# def edit_assessment_subject_score(score_id):
-#     score = AssessmentSubjectScore.query.get_or_404(score_id)
+@main.route('/edit_assessment_subject_score/<int:score_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_assessment_subject_score(score_id):
+    score = AssessmentSubjectScore.query.get_or_404(score_id)
     
-#     # Ensure the user is linked to the correct school and is an admin
-#     if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
-#         flash("Unauthorized access.", "danger")
-#         return redirect(url_for('main.assessment_subject_scores'))
+    # Ensure the user is linked to the correct school and is an admin
+    if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('main.assessment_subject_scores'))
 
-#     if request.method == 'POST':
-#         try:
-#             score.total_marks = request.form.get('total_marks')
-#             db.session.commit()
-#             flash("Assessment score updated successfully.", "success")
-#             return redirect(url_for('main.assessment_subject_scores'))
-#         except Exception as e:
-#             db.session.rollback()
-#             flash(f"Error updating score: {str(e)}", "danger")
+    if request.method == 'POST':
+        try:
+            score.total_marks = request.form.get('total_marks')
+            db.session.commit()
+            flash("Assessment score updated successfully.", "success")
+            return redirect(url_for('main.assessment_subject_scores'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating score: {str(e)}", "danger")
 
-#     return render_template('edit_assessment_subject_score.html', score=score)
+    return render_template('edit_assessment_subject_score.html', score=score)
 
 
-# @main.route('/delete_assessment_subject_score/<int:score_id>', methods=['POST'])
+# @main.route('/delete_assessment_subject_score/<int:score_id>', methods=['GET', 'POST'])
 # @login_required
 # @admin_required
 # def delete_assessment_subject_score(score_id):
+#     # scores = AssessmentSubjectScore.query.all() #or some form of filter.
+#     # for score in scores:
+#     #     print(score.id) #prints the id of each score.
 #     score = AssessmentSubjectScore.query.get_or_404(score_id)
-#     print('this is score id:', score)
+#     # print('this is score id:', score)
 
 #     # Check user authorization
 #     if not current_user.role == 'admin':
 #         return jsonify({"success": False, "message": "Unauthorized access."}), 403
     
 #     # Validate CSRF token
-#     csrf_token = request.form.get('csrf_token')
-#     if not csrf_token or csrf_token != session.get('_csrf_token'):
-#         return jsonify({"success": False, "message": "Invalid CSRF token."}), 400
+#     # csrf_token = request.form.get('csrf_token')
+#     # if not csrf_token or csrf_token != session.get('_csrf_token'):
+#     #     return jsonify({"success": False, "message": "Invalid CSRF token."}), 400
 
 #     try:
 #         db.session.delete(score)
 #         db.session.commit()
+#         return render_template('assessment_subject_score.html')
 #         return jsonify({"success": True, "message": "Assessment score deleted successfully."})
 #     except Exception as commit_error:
 #         db.session.rollback()
 #         print(f"Commit error: {str(commit_error)}")
 #         flash(f"Error committing changes: {str(commit_error)}", "danger")
-#         return jsonify({"success": False, "message": f"Error deleting score: {str(e)}"}), 500
+#         return jsonify({"success": False, "message": f"Error deleting score: {str(commit_error)}"}), 500
 
+@main.route('/delete_assessment_subject_score/<int:score_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def delete_assessment_subject_score(score_id):
+    score = AssessmentSubjectScore.query.get_or_404(score_id)
 
-# @main.route('/delete_multiple_assessment_subject_scores', methods=['POST'])
-# @login_required
-# @admin_required
-# def delete_multiple_assessment_subject_scores():
-#     if not current_user.role == 'admin':
-#         flash("Unauthorized access.", "danger")
-#         return redirect(url_for('main.assessment_subject_scores'))
+    # Check user authorization
+    if not current_user.role == 'admin':
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('main.assessment_subject_scores'))  # Redirect on failure
 
-#     delete_ids = request.form.getlist('delete_ids')
+    try:
+        db.session.delete(score)
+        db.session.commit()
+        flash("Assessment score deleted successfully.", "success")  # Flash success message
+        return redirect(url_for('main.assessment_subject_scores'))  # Redirect on success
+
+    except Exception as commit_error:
+        db.session.rollback()
+        print(f"Commit error: {str(commit_error)}")
+        flash(f"Error deleting score: {str(commit_error)}", "danger")
+        return redirect(url_for('main.assessment_subject_scores')) #redirect with error message.
     
-#     if not delete_ids:
-#         flash("No scores selected for deletion.", "warning")
-#         return redirect(url_for('main.assessment_subject_scores'))
+@main.route('/delete_multiple_assessment_subject_scores', methods=['POST'])
+@login_required
+@admin_required
+def delete_multiple_assessment_subject_scores():
+    if not current_user.role == 'admin':
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('main.assessment_subject_scores'))
+
+    delete_ids = request.form.getlist('delete_ids')
     
-#     try:
-#         for score_id in delete_ids:
-#             score = AssessmentSubjectScore.query.get(score_id)
-#             if score and score.student.school_id == current_user.school_id:
-#                 db.session.delete(score)
-#         db.session.commit()
-#         flash("Selected scores deleted successfully.", "success")
-#     except Exception as e:
-#         db.session.rollback()
-#         flash(f"Error deleting scores: {str(e)}", "danger")
+    if not delete_ids:
+        flash("No scores selected for deletion.", "warning")
+        return redirect(url_for('main.assessment_subject_scores'))
     
-#     return redirect(url_for('main.assessment_subject_scores'))
+    try:
+        for score_id in delete_ids:
+            score = AssessmentSubjectScore.query.get(score_id)
+            if score and score.student.school_id == current_user.school_id:
+                db.session.delete(score)
+        db.session.commit()
+        flash("Selected scores deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting scores: {str(e)}", "danger")
+    
+    return redirect(url_for('main.assessment_subject_scores'))
 
 
 # main.route('/api/assessment_subject_scores', methods=['GET', 'POST'])
@@ -1921,38 +1963,248 @@ def delete_assessment(assessment_id):
 #     db.session.commit()
 #     return jsonify({'message': 'Score deleted successfully'})
 
-@main.route('/scores', methods=['GET', 'POST'])
-def scores():
-    if request.method == 'GET':
-        all_scores = AssessmentSubjectScore.query.all()
-        scores_list = [{'id': s.id, 'assessment_id': s.assessment_id, 'subject_id': s.subject_id, 'student_id': s.student_id, 'total_marks': s.total_marks} for s in all_scores]
-        return render_template('assessments.html', scores=scores_list)
-    elif request.method == 'POST':
-        data = request.get_json()
-        new_score = AssessmentSubjectScore(assessment_id=data['assessment_id'], subject_id=data['subject_id'], student_id=data['student_id'], total_marks=data['total_marks'])
-        db.session.add(new_score)
-        db.session.commit()
-        all_scores = AssessmentSubjectScore.query.all()
-        scores_list = [{'id': s.id, 'assessment_id': s.assessment_id, 'subject_id': s.subject_id, 'student_id': s.student_id, 'total_marks': s.total_marks} for s in all_scores]
-        return render_template('assessments.html', scores=scores_list)
+# @main.route('/scores', methods=['GET', 'POST'])
+# def scores():
+#     assessments = Assessment.query.all()
+#     students = db.session.query(Student, Class.class_name).join(Class, Student.class_id == Class.id).all()
+#     subjects = Subject.query.all()
 
-@main.route('/scores/<int:id>', methods=['GET', 'PUT', 'DELETE'])
-def score(id):
-    score = AssessmentSubjectScore.query.get_or_404(id)
-    if request.method == 'GET':
-        return jsonify({'id': score.id, 'assessment_id': score.assessment_id, 'subject_id': score.subject_id, 'student_id': score.student_id, 'total_marks': score.total_marks})
-    elif request.method == 'PUT':
-        data = request.get_json()
-        score.assessment_id = data['assessment_id']
-        score.subject_id = data['subject_id']
-        score.student_id = data['student_id']
-        score.total_marks = data['total_marks']
-        db.session.commit()
-        return jsonify({'message': 'Score updated'})
-    elif request.method == 'DELETE':
-        db.session.delete(score)
-        db.session.commit()
-        return jsonify({'message': 'Score deleted'})
+#     if request.method == 'GET':
+#         all_scores = AssessmentSubjectScore.query.all()
+#         scores_list = [{'id': s.id, 'assessment_id': s.assessment_id, 'subject_id': s.subject_id, 'student_id': s.student_id, 'total_marks': s.total_marks} for s in all_scores]
+#         students_list = [{'id': student.id, 'name': f"{student.first_name} {student.last_name}", 'class_name': class_name} for student, class_name in students] # Corrected line
+#         return render_template('assessment_subject_scores.html', scores=scores_list, assessments=assessments, students=students_list, subjects=subjects)
+
+#     elif request.method == 'POST':
+#         data = request.get_json()
+#         subject_marks = data.get('subject_marks', [])
+#         for item in subject_marks:
+#             new_score = AssessmentSubjectScore(
+#                 assessment_id=data['assessment_id'],
+#                 subject_id=item['subject_id'],
+#                 student_id=data['student_id'],
+#                 total_marks=item['total_marks']
+#             )
+#             db.session.add(new_score)
+#         db.session.commit()
+#         all_scores = AssessmentSubjectScore.query.all()
+#         scores_list = [{'id': s.id, 'assessment_id': s.assessment_id, 'subject_id': s.subject_id, 'student_id': s.student_id, 'total_marks': s.total_marks} for s in all_scores]
+#         students = db.session.query(Student, Class.class_name).join(Class, Student.class_id == Class.id).all()
+#         students_list = [{'id': student.id, 'name': f"{student.first_name} {student.last_name}", 'class_name': class_name} for student, class_name in students] # Corrected line
+#         return render_template('assessment_subject_scores.html', scores=scores_list, assessments=assessments, students=students_list, subjects=subjects)
+
+# @main.route('/scores', methods=['GET', 'POST'])
+# def scores():
+#     assessments = Assessment.query.all()
+#     students = db.session.query(Student, Class.class_name).join(Class, Student.class_id == Class.id).all()
+#     all_subjects = Subject.query.all() #Get all subjects
+
+#     if request.method == 'GET':
+#         all_scores = AssessmentSubjectScore.query.all()
+#         scores_list = []
+#         for score in all_scores:
+#             assessment = Assessment.query.get(score.assessment_id)
+#             subject = Subject.query.get(score.subject_id)
+#             student = Student.query.get(score.student_id)
+#             if student:
+#                 student_class = Class.query.get(student.class_id)
+#                 student_name = f"{student.first_name} {student.last_name}"
+#                 class_name = student_class.class_name if student_class else "Class Not Found"
+#             else:
+#                 student_name = "Student Not Found"
+#                 class_name = "Class Not Found"
+
+#             scores_list.append({
+#                 'id': score.id,
+#                 'assessment_name': assessment.name if assessment else "Assessment Not Found",
+#                 'subject_name': subject.name if subject else "Subject Not Found",
+#                 'student_name': student_name,
+#                 'total_marks': score.total_marks
+#             })
+#         students_list = [{'id': student.id, 'name': f"{student.first_name} {student.last_name}", 'class_name': class_name} for student, class_name in students]
+#         return render_template('assessment_subject_scores.html', scores=scores_list, assessments=assessments, students=students_list, subjects=subjects)
+
+#     elif request.method == 'POST':
+#         data = request.get_json()
+#         subject_marks = data.get('subject_marks', [])
+#         for item in subject_marks:
+#             new_score = AssessmentSubjectScore(
+#                 assessment_id=data['assessment_id'],
+#                 subject_id=item['subject_id'],
+#                 student_id=data['student_id'],
+#                 total_marks=item['total_marks']
+#             )
+#             db.session.add(new_score)
+#         db.session.commit()
+#         all_scores = AssessmentSubjectScore.query.all()
+#         scores_list = []
+#         for score in all_scores:
+#             assessment = Assessment.query.get(score.assessment_id)
+#             subject = Subject.query.get(score.subject_id)
+#             student = Student.query.get(score.student_id)
+#             if student:
+#                 student_class = Class.query.get(student.class_id)
+#                 student_name = f"{student.first_name} {student.last_name}"
+#                 class_name = student_class.class_name if student_class else "Class Not Found"
+#             else:
+#                 student_name = "Student Not Found"
+#                 class_name = "Class Not Found"
+#             scores_list.append({
+#                 'id': score.id,
+#                 'assessment_name': assessment.name if assessment else "Assessment Not Found",
+#                 'subject_name': subject.name if subject else "Subject Not Found",
+#                 'student_name': student_name,
+#                 'total_marks': score.total_marks
+#             })
+#         students = db.session.query(Student, Class.class_name).join(Class, Student.class_id == Class.id).all()
+#         students_list = [{'id': student.id, 'name': f"{student.first_name} {student.last_name}", 'class_name': class_name} for student, class_name in students]
+#         return render_template('assessment_subject_scores.html', scores=scores_list, assessments=assessments, students=students_list, subjects=subjects)
+
+# @main.route('/scores', methods=['GET', 'POST'])
+# def scores():
+#     assessments = Assessment.query.all()
+#     students = db.session.query(Student, Class.class_name).join(Class, Student.class_id == Class.id).all()
+#     all_subjects = Subject.query.all()
+
+#     # **Function to Get Scores List**
+#     def get_scores_list():
+#         all_scores = (
+#             db.session.query(
+#                 AssessmentSubjectScore.id,
+#                 Assessment.name.label('assessment_name'),
+#                 Subject.name.label('subject_name'),
+#                 Student.first_name,
+#                 Student.last_name,
+#                 Class.class_name,
+#                 AssessmentSubjectScore.total_marks
+#             )
+#             .join(Assessment, AssessmentSubjectScore.assessment_id == Assessment.id)
+#             .join(Subject, AssessmentSubjectScore.subject_id == Subject.id)
+#             .join(Student, AssessmentSubjectScore.student_id == Student.id)
+#             .join(Class, Student.class_id == Class.id)
+#             .all()
+#         )
+
+#         return [
+#             {
+#                 'id': score.id,
+#                 'assessment_name': score.assessment_name if score.assessment_name else "Assessment Not Found",
+#                 'subject_name': score.subject_name if score.subject_name else "Subject Not Found",
+#                 'student_name': f"{score.first_name} {score.last_name}",
+#                 'total_marks': score.total_marks
+#             }
+#             for score in all_scores
+#         ]
+
+#     # **Function to Get Class-Subject Map**
+#     def get_class_subject_map():
+#         class_subjects = db.session.query(ClassSubject.class_id, Subject.id, Subject.name) \
+#                                    .join(Subject, ClassSubject.subject_id == Subject.id).all()
+
+#         class_subject_map = {}
+#         for class_id, subject_id, subject_name in class_subjects:
+#             if class_id not in class_subject_map:
+#                 class_subject_map[class_id] = []
+#             class_subject_map[class_id].append({'id': subject_id, 'name': subject_name})
+
+#         return class_subject_map
+
+#     if request.method == 'GET':
+#         scores_list = get_scores_list()
+#         students_list = [{'id': student.id, 'name': f"{student.first_name} {student.last_name}", 'class_name': class_name, 'class_id': student.class_id} for student, class_name in students]
+#         student_class_subject_map = get_class_subject_map()
+
+#         return render_template(
+#             'assessment_subject_scores.html',
+#             scores=scores_list,
+#             assessments=assessments,
+#             students=students_list,
+#             subjects=all_subjects,
+#             student_class_subject_map=student_class_subject_map
+#         )
+
+#     elif request.method == 'POST':
+#         data = request.get_json()
+        
+#         if not data or 'assessment_id' not in data or 'student_id' not in data or 'subject_marks' not in data:
+#             return jsonify({"error": "Missing required fields"}), 400
+        
+#         subject_marks = data.get('subject_marks', [])
+#         for item in subject_marks:
+#             if 'subject_id' not in item or 'total_marks' not in item:
+#                 return jsonify({"error": "Invalid subject marks format"}), 400
+            
+#             new_score = AssessmentSubjectScore(
+#                 assessment_id=data['assessment_id'],
+#                 subject_id=item['subject_id'],
+#                 student_id=data['student_id'],
+#                 total_marks=item['total_marks']
+#             )
+#             db.session.add(new_score)
+        
+#         db.session.commit()
+        
+#         scores_list = get_scores_list()
+#         students_list = [{'id': student.id, 'name': f"{student.first_name} {student.last_name}", 'class_name': class_name, 'class_id': student.class_id} for student, class_name in students]
+#         student_class_subject_map = get_class_subject_map()
+
+#         return render_template(
+#             'assessment_subject_scores.html',
+#             scores=scores_list,
+#             assessments=assessments,
+#             students=students_list,
+#             subjects=all_subjects,
+#             student_class_subject_map=student_class_subject_map
+#         )
+
+# @main.route('/scores/<int:id>', methods=['GET', 'PUT', 'DELETE'])
+# def score(id):
+#     score = AssessmentSubjectScore.query.get_or_404(id)
+#     if request.method == 'GET':
+#         return jsonify({
+#             'id': score.id,
+#             'assessment_id': score.assessment_id,
+#             'subject_id': score.subject_id,
+#             'student_id': score.student_id,
+#             'total_marks': score.total_marks
+#         })
+#     elif request.method == 'PUT':
+#         data = request.get_json()
+#         score.assessment_id = data['assessment_id']
+#         score.subject_id = data['subject_id']
+#         score.student_id = data['student_id']
+#         score.total_marks = data['total_marks']
+#         db.session.commit()
+#         return jsonify({'message': 'Score updated'})
+#     elif request.method == 'DELETE':
+#         db.session.delete(score)
+#         db.session.commit()
+#         return jsonify({'message': 'Score deleted'})
+
+
+# @main.route('/scores/<int:id>', methods=['GET', 'PUT', 'DELETE'])
+# def score(id):
+#     score = AssessmentSubjectScore.query.get_or_404(id)
+#     if request.method == 'GET':
+#         return jsonify({
+#             'id': score.id,
+#             'assessment_id': score.assessment_id,
+#             'subject_id': score.subject_id,
+#             'student_id': score.student_id,
+#             'total_marks': score.total_marks
+#         })
+#     elif request.method == 'PUT':
+#         data = request.get_json()
+#         score.assessment_id = data['assessment_id']
+#         score.subject_id = data['subject_id']
+#         score.student_id = data['student_id']
+#         score.total_marks = data['total_marks']
+#         db.session.commit()
+#         return jsonify({'message': 'Score updated'})
+#     elif request.method == 'DELETE':
+#         db.session.delete(score)
+#         db.session.commit()
+#         return jsonify({'message': 'Score deleted'})
         
 
 
@@ -2091,7 +2343,9 @@ def add_assessment_score():
                         total_marks = int(score_value)
 
                         # Ensure the subject belongs to the school
-                        subject = Subject.query.filter_by(id=int(subject_id), school_id=school_id).first()
+                        # subject = ClassSubject.query.filter_by(id=int(subject_id), school_id=school_id).first()
+                        subject = ClassSubject.query.join(Class).filter(Class.school_id == school_id).options(joinedload(ClassSubject.subject)).all()
+
                         if not subject:
                             flash(f"Invalid subject selection: {subject_id}.", "danger")
                             continue
@@ -2123,6 +2377,8 @@ def add_assessment_score():
     assessments = Assessment.query.filter_by(school_id=school_id).all()
     subjects = Subject.query.filter_by(school_id=school_id).all()
     classes = Class.query.filter_by(school_id=school_id).all()
+    class_subjects = ClassSubject.query.join(Class).filter(Class.school_id == school_id).options(joinedload(ClassSubject.subject)).all()
+
 
     #Filter students based on role.
     if current_user.role == 'teacher':
@@ -2138,7 +2394,8 @@ def add_assessment_score():
         assessments=assessments,
         subjects=subjects,
         students=students,
-        classes=classes
+        classes=classes,
+        class_subjects=class_subjects
     )
 
 # School Fees Management
@@ -3544,6 +3801,7 @@ def generate_results():
                     student_id=student_id,
                     subject_id=subject.id
                 ).first()
+                print('this is subject scores:', subject_score)
 
                 if not subject_score:
                     print(f"No scores found for student {student_id}, subject {subject_name}")
