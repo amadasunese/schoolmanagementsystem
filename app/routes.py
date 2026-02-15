@@ -46,7 +46,7 @@
 # from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
 # from reportlab.lib import colors
 # from reportlab.lib.utils import ImageReader
-# from flask import g 
+# from flask import g
 # from utils import school_required, filter_by_school
 # import uuid
 # from flask_wtf.csrf import validate_csrf
@@ -67,15 +67,16 @@
 # from flask_wtf.csrf import generate_csrf
 
 from utils import *
+from forms import ResetPasswordForm
 
 # Create a Blueprint instance
 main = Blueprint('main', __name__)
 
-    
+
 @main.route('/static/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
-    
+
 
 @main.before_request
 def load_school_details():
@@ -93,13 +94,13 @@ def load_school_details():
             g.school_logo = session['school_logo']
     else:
         g.school_name = "School Management Portal"
-        g.school_logo = "uploads/default-logo.png"  
+        g.school_logo = "uploads/default-logo.png"
 
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
-    form = LoginForm()  
-    if form.validate_on_submit():  
+    form = LoginForm()
+    if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
@@ -114,7 +115,7 @@ def index():
                     session['school_logo'] = g.school_logo
 
             # Redirect based on role
-            next_page = request.args.get('next')  
+            next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
 
@@ -122,7 +123,7 @@ def index():
                 return redirect(url_for('main.dashboard'))
             elif user.role == 'teacher':
                 return redirect(url_for('main.teacher_dashboard'))
-            else:  
+            else:
                 return redirect(url_for('main.student_dashboard'))
 
         flash('Invalid username or password', 'danger')
@@ -177,7 +178,7 @@ def register_school():
         try:
             db.session.add(school)
             db.session.commit()
-            flash('School registered successfully!  Provide this registration link to the school: ' + 
+            flash('School registered successfully!  Provide this registration link to the school: ' +
                   url_for('main.register_user', school_code=registration_code, _external=True), 'success')
 
             # Redirect to a confirmation page or the school's dashboard
@@ -367,6 +368,54 @@ def register_user():
         school_code=school_code
     )
 
+
+@main.route('/reset_user_password', methods=['GET', 'POST'])
+@login_required
+def reset_user_password():
+    if current_user.role != 'admin':
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('main.index'))
+
+    form = ResetPasswordForm()
+
+    # Fetch users with their schools
+    users = (
+        db.session.query(User, School)
+        .join(School, User.school_id == School.id)
+        .order_by(School.name, User.username)
+        .all()
+    )
+
+    # Populate dropdown: user_id | "Username - School"
+    form.user_id.choices = [
+        (u.id, f"{u.username} — {s.name}")
+        for u, s in users
+    ]
+
+    if form.validate_on_submit():
+        user = User.query.get(form.user_id.data)
+        if not user:
+            flash('Invalid user selected.', 'danger')
+            return redirect(url_for('main.reset_user_password'))
+
+        user.set_password(form.new_password.data)
+
+        try:
+            db.session.commit()
+            flash(f'Password reset successfully for {user.username}.', 'success')
+            return redirect(url_for('main.reset_user_password'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error resetting password.', 'danger')
+            print(e)
+
+    return render_template(
+        'reset_user_password.html',
+        form=form
+    )
+
+
+
 @main.route('/logout')
 @login_required
 def logout():
@@ -438,7 +487,7 @@ def teacher_dashboard():
         if not school:
             flash("Teacher is not associated with a school.", "danger")
             return redirect(url_for('main.index'))
-        
+
         classes_taught = Class.query.join(Class.teachers).filter(
             Teacher.id == current_user.id,
             Class.school_id == school.id
@@ -487,7 +536,7 @@ def dashboard():
         print(f"Error in dashboard route: {e}")
         flash("An error occurred while accessing the dashboard. Please try again later.", "danger")
         return redirect(url_for('main.index'))
-    
+
 # Report Generation Route
 @main.route('/generate_report/<report_type>')
 @login_required
@@ -501,7 +550,7 @@ def generate_report(report_type):
         "Grades": pd.read_sql(Grade.query.statement, db.session.bind),
         "Attendance": pd.read_sql(Attendance.query.statement, db.session.bind),
     }
-    
+
     if report_type == "excel":
         with BytesIO() as output:
             writer = pd.ExcelWriter(output, engine='xlsxwriter')
@@ -510,7 +559,7 @@ def generate_report(report_type):
             writer.save()
             output.seek(0)
             return send_file(output, attachment_filename="report.xlsx", as_attachment=True)
-    
+
     elif report_type == "word":
         doc = Document()
         for section, df in data.items():
@@ -625,7 +674,7 @@ def students():
         flash("You are not linked to any school.", "warning")
         return redirect(url_for('main.dashboard'))
 
-    query = Student.query.filter_by(school_id=current_user.school_id) 
+    query = Student.query.filter_by(school_id=current_user.school_id)
 
     if search_query:
         query = query.join(Class).filter(
@@ -842,7 +891,7 @@ def add_teacher():
             db.session.rollback()
             flash(f"An error occurred: {e}", "danger")
             return render_template('add_teacher.html', form=form)
-        
+
         flash('Teacher added successfully!')
         return redirect(url_for('main.teachers'))
 
@@ -911,7 +960,7 @@ def add_class():
     else:
         flash("No teachers are available for your school. Please add a teacher first.", "warning")
         form.teacher_ids.choices = [(-1, "No teachers are available for your school. Please add a teacher first.")]
-        
+
 
     if form.validate_on_submit():
         # Create a new class instance
@@ -1041,7 +1090,7 @@ def add_subject():
         return redirect(url_for('main.index'))
 
     form = SubjectForm()
-    
+
     if form.validate_on_submit():
         # Ensure the subject does not already exist in the school
         existing_subject = Subject.query.filter_by(name=form.name.data, school_id=current_user.school_id).first()
@@ -1088,7 +1137,7 @@ def assign_subject_to_class():
                 subject_id=int(subject_id)
             )
             db.session.add(class_subject)
-        
+
         db.session.commit()
         flash('Subjects assigned to class successfully!', 'success')
         return redirect(url_for('main.subjects'))
@@ -1130,12 +1179,12 @@ def edit_class_subject(class_name):
 
     if request.method == 'POST':
         new_subjects = request.form.getlist('subjects')
-        
+
         # Remove existing subjects not in new selection
         for cs in class_subjects:
             if str(cs.subject_id) not in new_subjects:
                 db.session.delete(cs)
-        
+
         # Add new selections
         for subject_id in new_subjects:
             if int(subject_id) not in selected_subjects:
@@ -1157,7 +1206,7 @@ def delete_class_subject(class_name):
 
     ClassSubject.query.filter_by(class_id=class_obj.id).delete()
     db.session.commit()
-    
+
     flash("Class subjects deleted successfully!", "success")
     return redirect(url_for('main.view_class_subjects'))
 
@@ -1173,7 +1222,7 @@ def generate_assessment_report(assessment_id):
         "Subject": score.subject.name,
         "Marks Obtained": score.marks_obtained
     } for score in scores])
-    
+
     with BytesIO() as output:
         writer = pd.ExcelWriter(output, engine='xlsxwriter')
         data.to_excel(writer, index=False, sheet_name='Assessment Scores')
@@ -1202,10 +1251,10 @@ def assessment_type():
     if not current_user.role == 'admin':
         flash('Access denied!', 'danger')
         return redirect(url_for('main.index'))
-    
+
     # Filter assessment types by the logged-in user's school
     assessment_types = AssessmentType.query.all()
-    
+
     return render_template('assessment_types.html', assessment_types=assessment_types)
 
 @main.route('/add_assessment_type', methods=['GET', 'POST'])
@@ -1256,7 +1305,7 @@ def edit_assessment_type(assessment_type_id):
 
     if request.method == 'GET':
         form = AssessmentTypeForm()
-        form.name.data = assessment_type.name 
+        form.name.data = assessment_type.name
         return render_template('edit_assessment_type.html', assessment_type=assessment_type, form=form)
 
     if request.method == 'POST':
@@ -1332,7 +1381,7 @@ def add_assessment():
         form.assessment_type.choices = [(atype.id, atype.name) for atype in AssessmentType.query.all()]
     else:
         form.assessment_type.choices = [(-1, "No assessment types are available. Please add an assessment type first.")]
-        
+
 
     form.class_id.choices = [
         (cls.id, cls.class_name)
@@ -1462,7 +1511,7 @@ def assessment_subject_scores():
                 db.session.rollback()
                 flash(f"Error deleting score: {str(e)}", "danger")
             return redirect(url_for('main.assessment_subject_scores'))
-    
+
     csrf_token = generate_csrf()
 
     return render_template(
@@ -1481,7 +1530,7 @@ def assessment_subject_scores():
 @login_required
 def edit_assessment_subject_score(score_id):
     score = AssessmentSubjectScore.query.get_or_404(score_id)
-    
+
     # Ensure the user is linked to the correct school and is an admin
     if score.student.school_id != current_user.school_id or not current_user.role == 'admin':
         flash("Unauthorized access.", "danger")
@@ -1508,7 +1557,7 @@ def delete_assessment_subject_score(score_id):
     # Check user authorization
     if not current_user.role == 'admin':
         return jsonify({"success": False, "message": "Unauthorized access."}), 403
-    
+
     # Validate CSRF token
     csrf_token = request.form.get('csrf_token')
     if not csrf_token or csrf_token != session.get('_csrf_token'):
@@ -1531,11 +1580,11 @@ def delete_multiple_assessment_subject_scores():
         return redirect(url_for('main.assessment_subject_scores'))
 
     delete_ids = request.form.getlist('delete_ids')
-    
+
     if not delete_ids:
         flash("No scores selected for deletion.", "warning")
         return redirect(url_for('main.assessment_subject_scores'))
-    
+
     try:
         for score_id in delete_ids:
             score = AssessmentSubjectScore.query.get(score_id)
@@ -1546,7 +1595,7 @@ def delete_multiple_assessment_subject_scores():
     except Exception as e:
         db.session.rollback()
         flash(f"Error deleting scores: {str(e)}", "danger")
-    
+
     return redirect(url_for('main.assessment_subject_scores'))
 
 
@@ -1681,7 +1730,7 @@ def calculate_grade(total_score):
         return 'D', 'Pass'
     else:
         return 'E', 'Weak'
-    
+
 
 """
 DO NOT DELETE
@@ -1702,10 +1751,10 @@ DO NOT DELETE
 
 #     heading_style = ParagraphStyle('Heading', parent=styles['h2'])
 #     heading_style.alignment = 1
-    
+
 #     normal_style = ParagraphStyle('Normal', parent=styles['Normal'])
 #     normal_style.alignment = 0
-    
+
 #     # Retrieve logo path from DB
 #     logo_path = student.get("school_logo")
 #     # logo_path = student.school_logo
@@ -2169,7 +2218,7 @@ def add_fee_component_to_class():
         db.session.commit()
         flash('Fee components added/updated successfully!', 'success')
         return redirect(url_for('main.generate_fees'))
-    
+
     # GET request handling (same as before)
     academic_years = [
         year.academic_year
@@ -2343,7 +2392,7 @@ def generate_class_fees_pdf():
         print(f"Error generating PDF: {e}")
         flash(f"An error occurred while generating the PDF: {e}", "danger")
         return redirect(url_for('main.generate_class_fees'))
-    
+
 
 
 @main.route('/generate_fees', methods=['GET'])
@@ -2370,7 +2419,7 @@ def generate_fees():
         classes=classes,
         academic_years=academic_years
     )
-    
+
 
 @main.route('/generate_class_fees', methods=['GET'])
 @login_required
@@ -2422,7 +2471,7 @@ def display_class_fee_components():
 
     # Render the template and pass the grouped data
     return render_template(
-        'class_fee_components.html', 
+        'class_fee_components.html',
         grouped_fees=grouped_fees
     )
 
@@ -2430,8 +2479,8 @@ def display_class_fee_components():
 # def view_class_fees(class_id):
 #     # Fetch the specific class by its ID
 #     selected_class = Class.query.get_or_404(class_id)
-    
-   
+
+
 #     class_fee_components = ClassFeeComponent.query.filter_by(class_id=class_id).all()
 #     return render_template('view_class_fees.html', selected_class=selected_class, class_fee_components=class_fee_components)
 
@@ -2487,12 +2536,12 @@ os.makedirs(file_directory, exist_ok=True)
 
 def create_student_result_pdf(student_dict):
     """Generate a student result PDF using ReportLab and return the file path."""
-    
+
     file_path = os.path.join(file_directory, f"result_{student_dict['name']}_{student_dict['result_id']}.pdf")
 
     doc = SimpleDocTemplate(file_path, pagesize=A4)
     styles = getSampleStyleSheet()
-    
+
     # Custom styles
     title_style = ParagraphStyle('Title', parent=styles['Title'], alignment=1, textColor=colors.red)
     heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], alignment=1)
@@ -2824,7 +2873,7 @@ def submit_remarks():
     student.academic_session = academic_session
     student.term = term
     db.session.commit()
-    
+
 
     flash("Remarks and signature uploaded successfully!", "success")
     return redirect(url_for("upload_signature", student=student, academic_session=academic_session, term=term))
@@ -2872,7 +2921,7 @@ def generate_results():
                 Student.teacher_remark, Student.principal_remark,
                 Student.principal_signature,
                 School.name.label("school_name"), School.address.label("school_address"),
-                Student.gender.label("sex"), School.school_logo        
+                Student.gender.label("sex"), School.school_logo
             )
             .join(School, Student.school_id == School.id)
             .filter(Student.id == student_id, Student.school_id == current_user.school_id)
@@ -2969,10 +3018,10 @@ def download_file(filename):
 @main.route('/list_students_result', methods=['GET'])
 def list_students_result():
     students = Student.query.with_entities(
-        Student.id, 
-        Student.result_url, 
-        Student.teacher_remark, 
-        Student.principal_remark, 
+        Student.id,
+        Student.result_url,
+        Student.teacher_remark,
+        Student.principal_remark,
         Student.principal_signature
     ).all()
     return render_template('list_students_results.html', students=students)
@@ -2991,7 +3040,7 @@ def edit_student_result(student_id):
         db.session.commit()
 
         return redirect(url_for('main.list_students_result', student_id=student.id))
-    
+
     return render_template('edit_student_results.html', student=student, form=form)
 
 

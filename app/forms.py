@@ -96,7 +96,7 @@ class AttendanceForm(FlaskForm):
     days_present = IntegerField('Days Present', validators=[DataRequired(), NumberRange(min=0)])
     total_days_opened = IntegerField('Total School Days', validators=[DataRequired(), NumberRange(min=1)])
     submit = SubmitField('Save')
-    
+
 
 class AssessmentForm(FlaskForm):
     name = StringField('Assessment Name', validators=[DataRequired()])
@@ -132,7 +132,7 @@ class ClassForm(FlaskForm):
     class_level = StringField('Class Level', validators=[DataRequired()])
     class_category = SelectField(
         'Class Category',
-        choices=[('Nursery', 'Nursery'), ('Primary', 'Primary'), 
+        choices=[('Nursery', 'Nursery'), ('Primary', 'Primary'),
                  ('Junior Secondary', 'Junior Secondary'), ('Senior Secondary', 'Senior Secondary')],
         validators=[DataRequired()]
     )
@@ -206,3 +206,35 @@ class RemarksForm(FlaskForm):
     principal_remark = TextAreaField("Principal's Remark", validators=[DataRequired()])
     signature = FileField("Signature", validators=[DataRequired()])
     submit = SubmitField("Submit")
+
+
+
+
+from flask_wtf import FlaskForm
+from wtforms import SelectField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Length, EqualTo
+
+class ResetPasswordForm(FlaskForm):
+    user_id = SelectField(
+        'Select User',
+        coerce=int,
+        validators=[DataRequired()]
+    )
+
+    new_password = PasswordField(
+        'New Password',
+        validators=[
+            DataRequired(),
+            Length(min=6, message='Password must be at least 6 characters')
+        ]
+    )
+
+    confirm_password = PasswordField(
+        'Confirm Password',
+        validators=[
+            DataRequired(),
+            EqualTo('new_password', message='Passwords must match')
+        ]
+    )
+
+    submit = SubmitField('Reset Password')
