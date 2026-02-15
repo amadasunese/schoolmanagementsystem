@@ -26,6 +26,7 @@ class SchoolForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email(), Length(max=100)])
     phone_number = StringField('Phone Number', validators=[Length(max=15)])
     website = StringField('Website', validators=[Length(max=100)])
+    principal_name = StringField('Principal Name', validators=[Length(max=100)])
     school_logo = FileField('School Logo', validators=[FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Register School')
 
@@ -98,15 +99,24 @@ class AttendanceForm(FlaskForm):
     submit = SubmitField('Save')
 
 
+# class AssessmentForm(FlaskForm):
+#     name = StringField('Assessment Name', validators=[DataRequired()])
+#     date = DateField('Date', format='%Y-%m-%d', validators=[DataRequired()])
+#     assessment_type = SelectField('Assessment Type', coerce=int, validators=[DataRequired()])
+#     class_id = SelectField('Class', coerce=int, validators=[DataRequired()])
+#     academic_session = StringField('Academic Session', validators=[DataRequired()])
+#     term = SelectField('Term', choices=[('First Term', 'First Term'), ('Second Term', 'Second Term'), ('Third Term', 'Third Term')], validators=[DataRequired()])
+#     submit = SubmitField('Submit')
+
 class AssessmentForm(FlaskForm):
     name = StringField('Assessment Name', validators=[DataRequired()])
-    date = DateField('Date', format='%Y-%m-%d', validators=[DataRequired()])
+    date = DateField('Date', validators=[DataRequired()])
     assessment_type = SelectField('Assessment Type', coerce=int, validators=[DataRequired()])
-    class_id = SelectField('Class', coerce=int, validators=[DataRequired()])
+    class_ids = SelectMultipleField('Classes', coerce=int, validators=[DataRequired()])  # Multi-select for classes
     academic_session = StringField('Academic Session', validators=[DataRequired()])
     term = SelectField('Term', choices=[('First Term', 'First Term'), ('Second Term', 'Second Term'), ('Third Term', 'Third Term')], validators=[DataRequired()])
-    submit = SubmitField('Submit')
-
+    submit = SubmitField('Add Assessment')
+    
 class AssessmentTypeForm(FlaskForm):
     name = StringField('Assessment Type', validators=[DataRequired(), Length(max=50)])
     submit = SubmitField('Save')
@@ -132,8 +142,13 @@ class ClassForm(FlaskForm):
     class_level = StringField('Class Level', validators=[DataRequired()])
     class_category = SelectField(
         'Class Category',
+<<<<<<< HEAD
         choices=[('Nursery', 'Nursery'), ('Primary', 'Primary'),
                  ('Junior Secondary', 'Junior Secondary'), ('Senior Secondary', 'Senior Secondary')],
+=======
+        choices=[('Nursery School', 'Nursery School'), ('Primary School', 'Primary School'), 
+                 ('Junior Secondary School', 'Junior Secondary School'), ('Senior Secondary School', 'Senior Secondary School')],
+>>>>>>> 6ce13e0b12f10a070169f908fdde69ce1d0b665a
         validators=[DataRequired()]
     )
     teacher_ids = SelectMultipleField('Teachers', coerce=int)

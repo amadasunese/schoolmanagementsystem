@@ -70,7 +70,7 @@
                 <th>Score</th>
             </tr>
         </thead>
-        <tbody id="subjects_table_body">
+        <!-- <tbody id="subjects_table_body">
             {% for subject in subjects %}
             <tr class="subject-row">
                 <td>
@@ -97,12 +97,127 @@
     <div id="no-subjects-message" style="display: none;">No subjects found for this assessment.</div>
 </div>
 
+        <button type="submit" class="btn btn-primary">Add Scores</button> -->
+        <tbody id="subjects_table_body">
+        </tbody>
+        </table>
+        <div id="no-subjects-message" style="display: none;">No subjects found for this class.</div>
+        </div>
+
         <button type="submit" class="btn btn-primary">Add Scores</button>
+
     </form>
 </div>
 
 <!-- Scripts -->
 <script>
+
+    // Student-Class Mapping
+    // Student-Class Mapping
+    const studentClassMap = {
+        {% for student in students %}
+        "{{ student.id }}": "{{ student.class_id }}",
+        {% endfor %}
+    };
+
+    const subjects = {
+        {% for subject in subjects %}
+        "{{ subject.id }}": {
+            "name": "{{ subject.name }}",
+        },
+        {% endfor %}
+    };
+
+    const classSubjects = {
+        {% for cs in class_subjects %}
+        "{{ cs.id }}": {
+            "subject_id": "{{ cs.subject_id }}",
+            "class_id": "{{ cs.class_id }}"
+        },
+        {% endfor %}
+    };
+
+    console.log("studentClassMap:", studentClassMap);
+    console.log("subjects:", subjects);
+    console.log("classSubjects:", classSubjects);
+
+    const subjectsTableBody = document.getElementById("subjects_table_body");
+    const noSubjectsMessage = document.getElementById("no-subjects-message");
+
+    function updateSubjects() {
+        const selectedStudentId = document.getElementById("student_id").value;
+        const selectedClassId = studentClassMap[selectedStudentId];
+
+        subjectsTableBody.innerHTML = ""; // Clear existing subjects
+        noSubjectsMessage.style.display = "none";
+
+        if (!selectedClassId) {
+            return; // No student selected, or no class mapping
+        }
+
+        let foundSubjects = false;
+        for (const csId in classSubjects) {
+            if (classSubjects[csId].class_id == selectedClassId) {
+                foundSubjects = true;
+                const subjectId = classSubjects[csId].subject_id;
+                const row = document.createElement("tr");
+                row.className = "subject-row";
+                row.innerHTML = `
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input subject-checkbox" 
+                                   type="checkbox" 
+                                   id="subject_${subjectId}" 
+                                   name="selected_subjects" 
+                                   value="${subjectId}">
+                            <label class="form-check-label" for="subject_${subjectId}">${subjects[subjectId].name}</label>
+                        </div>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control score-input" 
+                               name="score_${subjectId}" 
+                               placeholder="Enter score" 
+                               min="0" max="100" 
+                               disabled>
+                    </td>
+                `;
+                subjectsTableBody.appendChild(row);
+
+                // Enable/disable score input based on subject checkbox
+                const checkbox = row.querySelector('.form-check-input');
+                const scoreInput = row.querySelector('.score-input');
+                checkbox.addEventListener("change", function () {
+                    if (this.checked) {
+                        scoreInput.removeAttribute("disabled");
+                        scoreInput.focus();
+                    } else {
+                        scoreInput.setAttribute("disabled", true);
+                        scoreInput.value = "";
+                    }
+                });
+            }
+        }
+
+        if (!foundSubjects) {
+            noSubjectsMessage.style.display = "block";
+        }
+    }
+
+        document.getElementById("student_id").addEventListener("change", updateSubjects);
+        updateSubjects(); // Initial call to populate subjects
+
+        // ... (your existing student class mapping and assessment change logic) ...
+        document.getElementById("student_id").addEventListener("change", function () {
+        const selectedStudentId = this.value;
+        const classDropdown = document.getElementById("class_id");
+
+        if (studentClassMap[selectedStudentId]) {
+            classDropdown.value = studentClassMap[selectedStudentId];
+        } else {
+            classDropdown.value = ""; // Reset if no mapping found
+        }
+    });
+
     document.addEventListener("DOMContentLoaded", function () {
         const selectAllBtn = document.getElementById("select_all_btn");
         const checkboxes = document.querySelectorAll(".subject-checkbox");
@@ -176,22 +291,7 @@
     });
 
 
-    // Student-Class Mapping
-    const studentClassMap = {
-        {% for student in students %}
-        "{{ student.id }}": "{{ student.class_id }}",
-        {% endfor %}
-    };
+    
 
-    document.getElementById("student_id").addEventListener("change", function () {
-        const selectedStudentId = this.value;
-        const classDropdown = document.getElementById("class_id");
-
-        if (studentClassMap[selectedStudentId]) {
-            classDropdown.value = studentClassMap[selectedStudentId];
-        } else {
-            classDropdown.value = ""; // Reset if no mapping found
-        }
-    });
 </script>
 {% endblock %}
